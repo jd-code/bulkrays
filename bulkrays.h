@@ -36,6 +36,10 @@ namespace bulkrays {
 	    string version;
 	    MimeHeader mime;
 
+	    size_t reqbodylen;
+	    size_t readbodybytes;
+	    string req_body;
+
 	    void logger (const string &msg);
 	    void logger (const char *msg = NULL);
 
@@ -46,6 +50,9 @@ namespace bulkrays {
 		version.clear();
 		mime.clear();
 		statuscode = 0;
+		reqbodylen = 0;
+		readbodybytes = 0;
+		req_body.clear();
 	    }
 	    HTTPRequest (DummyConnection &dc) : pdummyconnection(&dc), statuscode(0), errormsg(NULL), suberrormsg(NULL) {}
 	    ~HTTPRequest ();
@@ -114,7 +121,9 @@ static int idnum;
 		HTTPRequestLine,	// waiting for an http Request-Line
 		MIMEHeader,		// first mime-entry of mime header
 		NextMIMEHeader,		// either continuing a mime value or next mime entry
-		EndOfMIMEHeader		// starting the datas following mimeheader
+//		MessageBody,		// starting the datas following mime header (Content-Length troubles)
+		ReadBody,		// buffering the body of the message itself
+		NowTreatRequest		// all message suposley rewad, we treat ...
 	    } State;
 	    State state;
 
@@ -123,6 +132,7 @@ static int idnum;
 	    HTTPRequest request;
 	    int id;
 
+	    void compute_reqbodylen (void);
 
 	    virtual ~HttppConn (void);
 	    HttppConn (int fd, struct sockaddr_in const &client_addr);

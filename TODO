@@ -8,6 +8,7 @@ qiconn:
 bulkrays:
     manque une methode generique de construction des headers mimes et de la ligne de status
     BUG many errors are logged twice !
+    permit regular simple error emission without closing the connection !
 
 simplefmap:
     lire les correspondances terminaisons de fichier -> mime

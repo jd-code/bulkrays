@@ -301,6 +301,7 @@ namespace qiconn
 					   bool	destroyatendofwrite;
 					 string	bufout;
 					 size_t	wpos;
+					   bool raw;
 		 static list<DummyConnection *>	ldums;
 	      list<DummyConnection *>::iterator	me;
 	protected:
@@ -314,6 +315,8 @@ namespace qiconn
 						DummyConnection (int fd, struct sockaddr_in const &client_addr);
 				   virtual void	read (void);
 				   virtual void	lineread (void);
+					   void setrawmode (void);
+					   void setlinemode (void);
 					   void	flush (void);
 					   void	flushandclose (void);
 				   virtual void	write (void);

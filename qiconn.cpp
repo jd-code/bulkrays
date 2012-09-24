@@ -540,6 +540,7 @@ namespace qiconn
     };
 
     DummyConnection::DummyConnection (int fd, struct sockaddr_in const &client_addr) : SocketConnection (fd, client_addr) {
+	raw = false;
 	pdummybuffer = NULL;
 	givenbuffer = false;
 	givenbufferiswaiting = false;
@@ -551,6 +552,13 @@ namespace qiconn
 	me--;
     }
 
+    void DummyConnection::setrawmode (void) {
+	raw = true;
+    }
+
+    void DummyConnection::setlinemode (void) {
+	raw = false;
+    }
 
     void DummyConnection::read (void) {
 	char s[BUFLEN];
@@ -572,18 +580,29 @@ if (debug_dummyin)
 }
 	int i;
 	for (i=0 ; i<n ; i++) {
-	    if ((s[i]==10) || (s[i]==13) || s[i]==0) {
-		if (i+1<n) {
-		    if ( ((s[i]==10) && (s[i+1]==13)) || ((s[i]==13) && (s[i+1]==10)) )
-			i++;
-		}
+	    if (!raw) {
+		if ((s[i]==10) || (s[i]==13) || s[i]==0) {
+		    if (i+1<n) {
+			if ( ((s[i]==10) && (s[i+1]==13)) || ((s[i]==13) && (s[i+1]==10)) )
+			    i++;
+		    }
 if (debug_lineread) {
     cerr << "DummyConnection::read->lineread(" << bufin << ")" << endl;
 }
-		lineread ();
-		bufin = "";
-	    } else
+		    lineread ();
+		    bufin = "";
+		} else
+		    bufin += s[i];
+	    } else {
 		bufin += s[i];
+	    }
+	}
+	if (raw) {
+if (debug_lineread) {
+    cerr << "DummyConnection::read->lineread(" << bufin << ")" << endl;
+}
+	    lineread ();
+	    bufin = "";
 	}
 	if (n==0) {
 	    cerr << "read() returned 0. we may close the fd[" << fd << "] ????" << endl;

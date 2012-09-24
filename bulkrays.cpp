@@ -233,6 +233,19 @@ namespace bulkrays {
 // [0]Connection: close
 // [0]
 
+    void HttppConn::compute_reqbodylen (void) {
+cout << "HttppConn::compute_reqbodylen" << endl;
+	MimeHeader::iterator mi = request.mime.find("Content-Length");
+	if (mi == request.mime.end()) {
+	    cout << "[" << id << "] MessageBody : no Content-Length header " << bufin << endl;
+	    request.reqbodylen = 0;
+	    request.readbodybytes = 0;
+	    return;
+	}
+	request.reqbodylen = atoi (mi->second.c_str());
+	request.readbodybytes = 0;
+    }
+
     void HttppConn::lineread (void) {
 	size_t p, q, len;
 	MimeHeader::iterator mi;
@@ -267,7 +280,14 @@ cout << "[" << id << "] version = " << request.version << endl;
     
 	    case MIMEHeader:
 		if (bufin.empty()) {
-		    state = EndOfMIMEHeader;
+		    compute_reqbodylen ();
+		    if (request.reqbodylen > 0) {
+			state = ReadBody;
+			setrawmode();
+		    } else {
+			state = NowTreatRequest;
+		    }
+
 		    for (mi=request.mime.begin() ; mi!=request.mime.end() ; mi++)
 			cout << "[" << id << "]    mime[" << mi->first << "] = <" << mi->second << ">" << endl;
 		    break;
@@ -285,9 +305,17 @@ cout << "[" << id << "] version = " << request.version << endl;
 			request.mime[mimeheadername] = mimevalue;   // JDJDJDJD should check for pre-existing mime entry
 // cout << mimeheadername << " = " << mimevalue << endl;
 		    }
-		    state = EndOfMIMEHeader;
+		    compute_reqbodylen ();
+		    if (request.reqbodylen > 0) {
+			state = ReadBody;
+			setrawmode();
+		    } else {
+			state = NowTreatRequest;
+		    }
+
 		    for (mi=request.mime.begin() ; mi!=request.mime.end() ; mi++)
 			cout << "[" << id << "]    mime[" << mi->first << "] = <" << mi->second << ">" << endl;
+
 		    break;
 		}
 		p = 0;
@@ -332,11 +360,22 @@ cout << "[" << id << "] version = " << request.version << endl;
 		state = NextMIMEHeader;
 		break;
 
-	    case EndOfMIMEHeader:
-		cout << "[" << id << "] endofmimeheader :  " << bufin << endl;
+	    case ReadBody:
+		request.req_body += bufin;
+		request.readbodybytes += bufin.size();
+		if (request.readbodybytes >= request.reqbodylen) {
+		    cout << "[" << id << "] ReadBody : " << request.readbodybytes << " read, " << request.reqbodylen << " schedulled.  diff = " << request.readbodybytes-request.reqbodylen << endl;
+		    state = NowTreatRequest;
+		    setlinemode();
+		    break;
+		}
+		break;
+
+	    case NowTreatRequest:
 		break;
 	}
-	if (state == EndOfMIMEHeader) {
+// cout << "state=" << state << " : request.reqbodylen=" << request.reqbodylen << " request.readbodybytes=" << request.readbodybytes << endl;
+	if (state == NowTreatRequest) {
 	    MimeHeader::iterator mi_host = request.mime.find ("Host");
 	    if (mi_host == request.mime.end()) {
 		cerr << "missing Host mime entry" << endl;
