@@ -1,0 +1,13 @@
+
+qiconn:
+    verifier tous les destructeurs des classes heritables virtuellement ....
+    et surtout des classes derivees par virtualisation !
+
+    faire une gestion de queue de suites de buffers a vider ... de natures differentes (stream ou mmap voire autre ...
+
+bulkrays:
+    manque une methode generique de construction des headers mimes et de la ligne de status
+    BUG many errors are logged twice !
+
+simplefmap:
+    lire les correspondances terminaisons de fichier -> mime
