@@ -37,18 +37,18 @@ namespace bulkrays {
 
     int percentdecode (const string &src, string &result) {
 	size_t i, l = src.length();
-	int error = 0;
+	int nberror = 0;
 
 	for (i=0 ; i<l ; ) {
 	    if (src[i] == '%') {
 		if (i+2 > l) {
-		    error++;
+		    nberror++;
 		    break;
 		}
 		int d = hexfromchar(src[i+1]);
 		int u = hexfromchar(src[i+2]);
 		if ((d<0) || (u<<0)) {
-		    error++;
+		    nberror++;
 		    result += src[i++];
 		    result += src[i++];
 		    result += src[i++];
@@ -60,22 +60,83 @@ namespace bulkrays {
 		result += src[i++];
 	    }
 	}
-cerr << "percentdecode (" << src << ")=" << result << endl;
-	return error;
+// cerr << "percentdecode (" << src << ")=" << result << endl;
+	return nberror;
+    }
+
+    int percentdecodeform (const string &src, string &result) {
+	size_t i, l = src.length();
+	int nberror = 0;
+
+	for (i=0 ; i<l ; ) {
+	    if (src[i] == '%') {
+		if (i+2 > l) {
+		    nberror++;
+		    break;
+		}
+		int d = hexfromchar(src[i+1]);
+		int u = hexfromchar(src[i+2]);
+		if ((d<0) || (u<0)) {
+		    nberror++;
+		    result += src[i++];
+		    result += src[i++];
+		    result += src[i++];
+		} else {
+		    result += (char)(d*16+u);
+		    i += 3;
+		}
+	    } else if (src[i] == '+') {
+		result += " ", i++;
+	    } else {
+		result += src[i++];
+	    }
+	}
+// cerr << "percentdecodeform (" << src << ")=" << result << endl;
+	return nberror;
     }
 
     int populate_reqfields_from_uri (const string& uri, string &document_uri, FieldsMap &reqfields) {
 	size_t p;
-	int error = 0;
+	int nberror = 0;
 
 	p = uri.find ('?');
 
-	error += percentdecode (uri.substr (0,p), document_uri);
+	nberror += percentdecode (uri.substr (0,p), document_uri);
 
 	if (p == string::npos)
-	    return error;
+	    return nberror;
 
-	return error;
+	p++;
+	size_t q = p,
+	       l = uri.size();
+	while (q < l) {
+// cerr << "----(" << uri.substr(q) << ")------------------" << endl;
+	    q = uri.find('=', q);
+	    if (q == string::npos) {
+		nberror ++;
+		break;
+	    }
+	    string ident = uri.substr (p, q-p);
+// cerr << "------------" << ident << endl;
+	    FieldsMap::iterator mi = reqfields.find (ident);
+	    if (mi != reqfields.end()) {
+		cerr << "populate_reqfields_from_uri : field[" << ident << "] repopulated !" << endl;
+		nberror ++;
+	    }
+	    p = q+1;
+	    q = uri.find('&', q);
+	    string value;
+	    if (q == string::npos) {
+		nberror += percentdecodeform (uri.substr (p), value);
+		reqfields[ident] = value;
+		break;
+	    }
+	    nberror += percentdecodeform (uri.substr (p, q-p), value);
+	    reqfields[ident] = value;
+	    p = q+1;
+	}
+
+	return nberror;
     }
 
     MimeTypes::MimeTypes (const char* fname) {
@@ -298,7 +359,7 @@ cerr << "percentdecode (" << src << ")=" << result << endl;
 // [0]
 
     void HttppConn::compute_reqbodylen (void) {
-cout << "HttppConn::compute_reqbodylen" << endl;
+// cout << "HttppConn::compute_reqbodylen" << endl;
 	MimeHeader::iterator mi = request.mime.find("Content-Length");
 	if (mi == request.mime.end()) {
 	    cout << "[" << id << "] MessageBody : no Content-Length header " << bufin << endl;
@@ -330,6 +391,9 @@ cout << "[" << id << "] method = " << request.method << endl;
 		if (p == string::npos) {
 		    request.req_uri = bufin.substr(q);
 		    populate_reqfields_from_uri (request.req_uri, request.document_uri, request.reqfields);
+cout << "[" << id << "] req_uri = " << request.req_uri << endl;
+cout << "[" << id << "]   "<< endl
+     << ostreamMap(request.reqfields, "       reqfields") << endl;
 		    cerr << "wrong request line (missing version ?): " << bufin << endl;
 		    returnerror.shortcuterror ((*out), request, 400, NULL, "wrong request line (missing http version ?)");
 		    flushandclose();
@@ -338,6 +402,8 @@ cout << "[" << id << "] method = " << request.method << endl;
 		request.req_uri = bufin.substr (q, p-q);
 		populate_reqfields_from_uri (request.req_uri, request.document_uri, request.reqfields);
 cout << "[" << id << "] req_uri = " << request.req_uri << endl;
+cout << "[" << id << "]   "<< endl
+     << ostreamMap(request.reqfields, "       reqfields") << endl;
 		q = p+1, p = bufin.find (' ', q);
 		request.version = bufin.substr(q);
 cout << "[" << id << "] version = " << request.version << endl;
@@ -353,9 +419,8 @@ cout << "[" << id << "] version = " << request.version << endl;
 		    } else {
 			state = NowTreatRequest;
 		    }
-
-		    for (mi=request.mime.begin() ; mi!=request.mime.end() ; mi++)
-			cout << "[" << id << "]    mime[" << mi->first << "] = <" << mi->second << ">" << endl;
+cout << "[" << id << "]   "<< endl
+     << ostreamMap(request.mime, "      mime") << endl;
 		    break;
 		}
 		if (!isalnum(bufin[0])) {
@@ -378,10 +443,8 @@ cout << "[" << id << "] version = " << request.version << endl;
 		    } else {
 			state = NowTreatRequest;
 		    }
-
-		    for (mi=request.mime.begin() ; mi!=request.mime.end() ; mi++)
-			cout << "[" << id << "]    mime[" << mi->first << "] = <" << mi->second << ">" << endl;
-
+cout << "[" << id << "]   "<< endl
+     << ostreamMap(request.mime, "      mime") << endl;
 		    break;
 		}
 		p = 0;

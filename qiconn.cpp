@@ -1046,5 +1046,17 @@ if (debug_dummyout) {
 	return chpp.dump (cout);
     }
     
+
+    ostream & operator<< (ostream& cout, ostreamMap const &m ) {
+	if (m.m.empty()) {
+	    cout << m.name << "[]={empty}" << endl;
+	    return cout;
+	}
+	map<string,string>::const_iterator mi;
+	for (mi=m.m.begin() ; mi!=m.m.end() ; mi++)
+	    cout << m.name << "[" << mi->first << "]=\"" << mi->second << '"' << endl;
+	
+	return cout;
+    }
 } // namespace qiconn
 

@@ -377,6 +377,14 @@ namespace qiconn
     };
     ostream & operator<< (ostream& cout, CharPP const & chpp);
     
+    class ostreamMap {
+	public:
+	    string name;
+	    map<string,string> const& m;
+	    ostreamMap (map<string,string> const& map, const char *dispname) : name(dispname), m(map) {}
+	    ~ostreamMap () {}
+    };
+    ostream & operator<< (ostream& cout, ostreamMap const &m );
 
 }   // namespace qiconn
 

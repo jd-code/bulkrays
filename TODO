@@ -9,6 +9,8 @@ bulkrays:
     manque une methode generique de construction des headers mimes et de la ligne de status
     BUG many errors are logged twice !
     permit regular simple error emission without closing the connection !
+    %00 in percentdecode ??????
+    !!! verifier et loguer qu'une req http n'arrive pas avant la fin de transmission des donnees de la precedente
 
 simplefmap:
     lire les correspondances terminaisons de fichier -> mime
