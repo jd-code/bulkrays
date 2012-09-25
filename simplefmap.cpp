@@ -51,8 +51,17 @@ namespace simplefmap {
 		return error (cout, req, 405);	// JDJDJDJD The response MUST include an Allow header containing a list of valid methods for the requested resource. 
 	    }
 
+	    bool isrootdir = false;
+
 	    string fname (rootdir);
-	    fname += req.req_uri;
+	    if (req.document_uri.empty())
+		req.document_uri = "/";
+	    if (req.document_uri == "/")
+		isrootdir = true;
+
+cerr << "req.document_uri = " << req.document_uri << endl;
+
+	    fname += req.document_uri;
 	    char * canonfname = realpath (fname.c_str(), NULL);
 	    if (canonfname == NULL) {
 		int e = errno;
@@ -75,11 +84,13 @@ namespace simplefmap {
 		}
 	    }
 
-	    if (strncmp (canonfname, rootdir.c_str(), rootdirlength) != 0) {
-		stringstream err;
-		err << "simplefmap : FMap_TreatRequest::output : file " << canonfname << " fells outside of rootdir : " << rootdir;
-		req.logger (err.str());
-		return error (cout, req, 403, NULL, "file permission denied (001b)");
+	    if (!isrootdir) {
+		if (strncmp (canonfname, rootdir.c_str(), rootdirlength) != 0) {
+		    stringstream err;
+		    err << "simplefmap : FMap_TreatRequest::output : file " << canonfname << " fells outside of rootdir : " << rootdir;
+		    req.logger (err.str());
+		    return error (cout, req, 403, NULL, "file permission denied (001b)");
+		}
 	    }
 
 	    struct stat statbuf;
@@ -123,14 +134,14 @@ cerr << "simplefmap::output lstat gave error " << e << " " << strerror (e) << en
 		  << "     \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd\">" << endl
 		  << "<html xmlns='http://www.w3.org/1999/xhtml'>" << endl;
 
-		s << "<head><title>" << req.req_uri << "</title></head>" << endl;
+		s << "<head><title>" << req.document_uri << "</title></head>" << endl;
 		s << "<body>" << endl;
 		s << "<h1>" << canonfname << "</h1>" << endl;
 		s << "<h2>" << fname << "</h2>" << endl;
 		s << "<div>" << endl;
 		s << "<tt>" << endl;
 		s << "<div>" << req.method << "</div>" << endl
-		  << "<div>" << req.req_uri << "</div>" << endl
+		  << "<div>" << req.document_uri << "</div>" << endl
 		  << "<div>" << req.version << "</div>" << endl;
 		s << "</tt>" << endl;
 		s << "</div>" << endl;
@@ -168,11 +179,11 @@ cerr << "simplefmap::output lstat gave error " << e << " " << strerror (e) << en
 		}
 
 		string mime_type;
-		size_t pdot = req.req_uri.rfind('.');
+		size_t pdot = req.document_uri.rfind('.');
 		if (pdot == string::npos) {
 		    mime_type = "text/plain";
 		} else {
-		    string terminaison = req.req_uri.substr(pdot + 1);
+		    string terminaison = req.document_uri.substr(pdot + 1);
 		    const string * pmt = mimetypes.getmimefromterminaison (terminaison);
 		    if (pmt == NULL)
 			mime_type = "text/plain";

@@ -23,6 +23,10 @@ namespace bulkrays {
 	    const string * getmimefromterminaison (const char *term);
     };
 
+    typedef map<string, string> FieldsMap;
+
+    int populate_reqfields_from_uri (const string& uri, string &document_uri, FieldsMap &reqfields);
+
     class HTTPRequest
     {
 	public:
@@ -33,6 +37,7 @@ namespace bulkrays {
 	    string method;
 	    string host;
 	    string req_uri;
+	    string document_uri;
 	    string version;
 	    MimeHeader mime;
 
@@ -40,19 +45,27 @@ namespace bulkrays {
 	    size_t readbodybytes;
 	    string req_body;
 
+	    FieldsMap reqfields;
+
+
 	    void logger (const string &msg);
 	    void logger (const char *msg = NULL);
 
+
 	    void clear (void) {
-		method.clear();
-		host.clear();
-		req_uri.clear();
-		version.clear();
-		mime.clear();
-		statuscode = 0;
-		reqbodylen = 0;
-		readbodybytes = 0;
-		req_body.clear();
+		      method.clear();
+			host.clear();
+		     req_uri.clear();
+		document_uri.clear();
+		     version.clear();
+			mime.clear();
+		  statuscode = 0;
+
+		  reqbodylen = 0;
+	       readbodybytes = 0;
+		    req_body.clear();
+
+		   reqfields.clear();
 	    }
 	    HTTPRequest (DummyConnection &dc) : pdummyconnection(&dc), statuscode(0), errormsg(NULL), suberrormsg(NULL) {}
 	    ~HTTPRequest ();

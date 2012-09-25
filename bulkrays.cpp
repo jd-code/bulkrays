@@ -13,6 +13,70 @@ namespace bulkrays {
     using namespace std;
     using namespace qiconn;
 
+    inline int hexfromchar (char c) {
+	switch (c) {
+	    case '0': return 0;
+	    case '1': return 1;
+	    case '2': return 2;
+	    case '3': return 3;
+	    case '4': return 4;
+	    case '5': return 5;
+	    case '6': return 6;
+	    case '7': return 7;
+	    case '8': return 8;
+	    case '9': return 9;
+	    case 'a': case 'A': return 10;
+	    case 'b': case 'B': return 11;
+	    case 'c': case 'C': return 12;
+	    case 'd': case 'D': return 13;
+	    case 'e': case 'E': return 14;
+	    case 'f': case 'F': return 15;
+	    default: return -1;
+	}
+    }
+
+    int percentdecode (const string &src, string &result) {
+	size_t i, l = src.length();
+	int error = 0;
+
+	for (i=0 ; i<l ; ) {
+	    if (src[i] == '%') {
+		if (i+2 > l) {
+		    error++;
+		    break;
+		}
+		int d = hexfromchar(src[i+1]);
+		int u = hexfromchar(src[i+2]);
+		if ((d<0) || (u<<0)) {
+		    error++;
+		    result += src[i++];
+		    result += src[i++];
+		    result += src[i++];
+		} else {
+		    result += (char)(d*16+u);
+		    i += 3;
+		}
+	    } else {
+		result += src[i++];
+	    }
+	}
+cerr << "percentdecode (" << src << ")=" << result << endl;
+	return error;
+    }
+
+    int populate_reqfields_from_uri (const string& uri, string &document_uri, FieldsMap &reqfields) {
+	size_t p;
+	int error = 0;
+
+	p = uri.find ('?');
+
+	error += percentdecode (uri.substr (0,p), document_uri);
+
+	if (p == string::npos)
+	    return error;
+
+	return error;
+    }
 
     MimeTypes::MimeTypes (const char* fname) {
 	ifstream f(fname);
@@ -265,12 +329,14 @@ cout << "[" << id << "] method = " << request.method << endl;
 		q = p+1, p = bufin.find (' ', q);
 		if (p == string::npos) {
 		    request.req_uri = bufin.substr(q);
+		    populate_reqfields_from_uri (request.req_uri, request.document_uri, request.reqfields);
 		    cerr << "wrong request line (missing version ?): " << bufin << endl;
 		    returnerror.shortcuterror ((*out), request, 400, NULL, "wrong request line (missing http version ?)");
 		    flushandclose();
 		    break;
 		}
 		request.req_uri = bufin.substr (q, p-q);
+		populate_reqfields_from_uri (request.req_uri, request.document_uri, request.reqfields);
 cout << "[" << id << "] req_uri = " << request.req_uri << endl;
 		q = p+1, p = bufin.find (' ', q);
 		request.version = bufin.substr(q);
