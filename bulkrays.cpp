@@ -95,6 +95,41 @@ namespace bulkrays {
 	return nberror;
     }
 
+    int populate_reqfields_from_urlencodebody (const string& body, FieldsMap &reqfields, size_t p=0) {
+	int nberror = 0;
+
+	size_t q = p,
+	       l = body.size();
+	while (q < l) {
+// cerr << "----(" << body.substr(q) << ")------------------" << endl;
+	    q = body.find('=', q);
+	    if (q == string::npos) {
+		nberror ++;
+		break;
+	    }
+	    string ident = body.substr (p, q-p);
+// cerr << "------------" << ident << endl;
+	    FieldsMap::iterator mi = reqfields.find (ident);
+	    if (mi != reqfields.end()) {
+		cerr << "populate_reqfields_from_urlencodebody : field[" << ident << "] repopulated !" << endl;
+		nberror ++;
+	    }
+	    p = q+1;
+	    q = body.find('&', q);
+	    string value;
+	    if (q == string::npos) {
+		nberror += percentdecodeform (body.substr (p), value);
+		reqfields[ident] = value;
+		break;
+	    }
+	    nberror += percentdecodeform (body.substr (p, q-p), value);
+	    reqfields[ident] = value;
+	    p = q+1;
+	}
+
+	return nberror;
+    }
+
     int populate_reqfields_from_uri (const string& uri, string &document_uri, FieldsMap &reqfields) {
 	size_t p;
 	int nberror = 0;
@@ -105,6 +140,8 @@ namespace bulkrays {
 
 	if (p == string::npos)
 	    return nberror;
+	else
+	    return populate_reqfields_from_urlencodebody (uri, reqfields, p+1);
 
 	p++;
 	size_t q = p,
@@ -494,6 +531,9 @@ cout << "[" << id << "]   "<< endl
 		request.readbodybytes += bufin.size();
 		if (request.readbodybytes >= request.reqbodylen) {
 		    cout << "[" << id << "] ReadBody : " << request.readbodybytes << " read, " << request.reqbodylen << " schedulled.  diff = " << request.readbodybytes-request.reqbodylen << endl;
+		    populate_reqfields_from_urlencodebody (request.req_body, request.reqfields);
+cout << "[" << id << "]   "<< endl
+     << ostreamMap(request.reqfields, "       reqfields") << endl;
 		    state = NowTreatRequest;
 		    setlinemode();
 		    break;
