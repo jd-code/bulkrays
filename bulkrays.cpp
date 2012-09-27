@@ -95,6 +95,25 @@ namespace bulkrays {
 	return nberror;
     }
 
+    void FieldsMapR::import (FieldsMap const &m) {
+	FieldsMap::const_iterator mi;
+
+	for (mi=m.begin() ; mi!=m.end() ; mi++)
+	    this->insert ( pair<string, const string&> (mi->first, mi->second) );
+    }
+
+    ostream & operator<< (ostream& cout, FieldsMapR const &m ) {
+	FieldsMapR::const_iterator mi;
+	if (m.empty()) {
+	    cout << m.name << "[]={empty}" << endl;
+	    return cout;
+	}
+	for (mi=m.begin() ; mi!=m.end() ; mi++)
+	    cout << m.name << "[" << mi->first << "]=\"" << mi->second << '"' << endl;
+	return cout;
+    }
+
+
     int populate_reqfields_from_urlencodebody (const string& body, FieldsMap &reqfields, size_t p /* =0 */) {
 	int nberror = 0;
 
@@ -511,20 +530,20 @@ cout << "[" << id << "] method = " << request.method << endl;
 		q = p+1, p = bufin.find (' ', q);
 		if (p == string::npos) {
 		    request.req_uri = bufin.substr(q);
-		    populate_reqfields_from_uri (request.req_uri, request.document_uri, request.reqfields);
+		    populate_reqfields_from_uri (request.req_uri, request.document_uri, request.uri_fields);
 cout << "[" << id << "] req_uri = " << request.req_uri << endl;
 cout << "[" << id << "]   "<< endl
-     << ostreamMap(request.reqfields, "       reqfields") << endl;
+     << ostreamMap(request.uri_fields, "       uri_fields") << endl;
 		    cerr << "wrong request line (missing version ?): " << bufin << endl;
 		    returnerror.shortcuterror ((*out), request, 400, NULL, "wrong request line (missing http version ?)");
 		    flushandclose();
 		    break;
 		}
 		request.req_uri = bufin.substr (q, p-q);
-		populate_reqfields_from_uri (request.req_uri, request.document_uri, request.reqfields);
+		populate_reqfields_from_uri (request.req_uri, request.document_uri, request.uri_fields);
 cout << "[" << id << "] req_uri = " << request.req_uri << endl;
 cout << "[" << id << "]   "<< endl
-     << ostreamMap(request.reqfields, "       reqfields") << endl;
+     << ostreamMap(request.uri_fields, "       uri_fields") << endl;
 		q = p+1, p = bufin.find (' ', q);
 		request.version = bufin.substr(q);
 cout << "[" << id << "] version = " << request.version << endl;
@@ -653,7 +672,7 @@ cout << "could not find next boundary" << endl;
 
 			    currboundary = p;
 			    if (wehaveasmallfield) {
-				request.reqfields[name] = request.req_body.substr (lastboundary, currboundary - lastboundary - lcrs);
+				request.body_fields[name] = request.req_body.substr (lastboundary, currboundary - lastboundary - lcrs);
 				wehaveasmallfield = false;
 			    }
 
@@ -679,12 +698,12 @@ cout << "reached closing boundary at " << (l - q) << " bytes from end of body" <
 				    break;
 				}
 				
-cout << "crlf in use :";
-{   size_t i;
-    for(i=0;i<lcr.size();i++)
-	cout << "[" << (int)lcr[i] << "]";
-}
-cout << endl;
+// cout << "crlf in use :";
+// {   size_t i;
+//     for(i=0;i<lcr.size();i++)
+// 	cout << "[" << (int)lcr[i] << "]";
+// }
+// cout << endl;
 			    }
 
 			    q = request.req_body.find (lcr, p);
@@ -737,7 +756,7 @@ cout << endl;
 
 		    } else if (mi->second == "application/x-www-form-urlencoded") {
 cout << "we've a form post !" << endl;
-			populate_reqfields_from_urlencodebody (request.req_body, request.reqfields);
+			populate_reqfields_from_urlencodebody (request.req_body, request.body_fields);
 		    } else {
 			cerr << "unhandled request-body' Content-Type : " << mi->second << endl;	// JDJDJDJD this could have been detected earlier, and the connection shut earlier
 			returnerror.shortcuterror ((*out), request, 415, NULL, "the provided Content-type for request body cannot be handled by server");
@@ -758,7 +777,13 @@ cout << "we've a form post !" << endl;
 
 cout << "============================" << endl;
 cout << "[" << id << "]   "<< endl
-     << ostreamMap(request.reqfields, "      reqfields") << endl;
+     << ostreamMap(request.body_fields, "      body_fields") << endl;
+
+	    request.reqfields.import(request.uri_fields);
+	    request.reqfields.import(request.body_fields);
+cout << "[" << id << "]   "<< endl
+     << request.reqfields << endl;
+
 
 	    MimeHeader::iterator mi_host = request.mime.find ("Host");
 	    if (mi_host == request.mime.end()) {

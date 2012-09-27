@@ -27,6 +27,14 @@ namespace bulkrays {
 
     typedef map<string, string> FieldsMap;
 
+    class FieldsMapR : public map<string, const string&> {
+	public:
+	    const char * name;
+	    FieldsMapR (const char * name) : name(name) {}
+	    ~FieldsMapR () {}
+	    void import (FieldsMap const &m);
+    };
+
     string fetch_localcr (const string &s, size_t p=0);
     int read_mimes_in_string (string const &s, FieldsMap &mime, string const &lcr, size_t &p, size_t l = string::npos);
 
@@ -51,7 +59,9 @@ namespace bulkrays {
 	    size_t readbodybytes;
 	    string req_body;
 
-	    FieldsMap reqfields;
+	    FieldsMapR reqfields;
+	    FieldsMap	uri_fields,
+			body_fields;
 
 
 	    void logger (const string &msg);
@@ -73,7 +83,7 @@ namespace bulkrays {
 
 		   reqfields.clear();
 	    }
-	    HTTPRequest (DummyConnection &dc) : pdummyconnection(&dc), statuscode(0), errormsg(NULL), suberrormsg(NULL) {}
+	    HTTPRequest (DummyConnection &dc) : pdummyconnection(&dc), statuscode(0), errormsg(NULL), suberrormsg(NULL), reqfields("reqfields") {}
 	    ~HTTPRequest ();
     };
 
