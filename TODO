@@ -11,6 +11,7 @@ bulkrays:
     permit regular simple error emission without closing the connection !
     %00 in percentdecode ??????
     !!! verifier et loguer qu'une req http n'arrive pas avant la fin de transmission des donnees de la precedente
+    req_body parsing : utiliser un mode plus strict d'erreurs report
 
 simplefmap:
-    lire les correspondances terminaisons de fichier -> mime
+    [done] lire les correspondances terminaisons de fichier -> mime

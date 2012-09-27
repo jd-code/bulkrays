@@ -11,6 +11,8 @@ namespace bulkrays {
     using namespace std;
     using namespace qiconn;
 
+    int percentdecode (const string &src, string &result);
+    int percentdecodeform (const string &src, string &result);
 
     typedef map<string,string> MimeHeader;
 
@@ -25,6 +27,10 @@ namespace bulkrays {
 
     typedef map<string, string> FieldsMap;
 
+    string fetch_localcr (const string &s, size_t p=0);
+    int read_mimes_in_string (string const &s, FieldsMap &mime, string const &lcr, size_t &p, size_t l = string::npos);
+
+    int populate_reqfields_from_urlencodebody (const string& body, FieldsMap &reqfields, size_t p=0);
     int populate_reqfields_from_uri (const string& uri, string &document_uri, FieldsMap &reqfields);
 
     class HTTPRequest

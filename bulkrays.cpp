@@ -95,7 +95,7 @@ namespace bulkrays {
 	return nberror;
     }
 
-    int populate_reqfields_from_urlencodebody (const string& body, FieldsMap &reqfields, size_t p=0) {
+    int populate_reqfields_from_urlencodebody (const string& body, FieldsMap &reqfields, size_t p /* =0 */) {
 	int nberror = 0;
 
 	size_t q = p,
@@ -129,6 +129,90 @@ namespace bulkrays {
 
 	return nberror;
     }
+
+    string fetch_localcr (const string &s, size_t p /* =0 */) {
+	size_t l = s.size();
+	string lcr;
+
+	while ((p<l) && ((s[p]==' ') || (s[p] == '\t'))) p++; // JDJDJD is this white space walking overkill ?
+
+	if (p > l)
+	    return lcr;
+
+	if ((s[p] != 10) && (s[p] != 13)) {
+	    cerr << "fetch_localcr bad carriage return at end of boundary ?" << endl;
+	    return lcr;
+	}
+	lcr += s[p];
+
+	p++;
+	if (p > l)
+	    return lcr;
+
+	if ((s[p] != 10) && (s[p] != 13))
+	    return lcr;
+
+	if (s[p] == lcr[0])
+	    return lcr;
+
+	lcr += s[p];
+	return lcr;
+    }
+
+    int read_mimes_in_string (string const &s, FieldsMap &mime, string const &lcr, size_t &p, size_t l /* = string::npos */) {
+	int nberror = 0;
+	if (l == string::npos)
+	    l = s.size();
+	size_t lcrs = lcr.size();
+	string firstofmatch (":"); firstofmatch += lcr[0];
+
+	while (p<l) {
+	    if (s.substr (p,lcrs) == lcr) {  // end of mime header
+		p += lcrs;
+		break;
+	    }
+
+	    if (isspace(s[p])) {	    // we should not start an identifier with a space
+		return nberror ++;
+	    }
+	    
+	    size_t q = s.find_first_of(firstofmatch, p);
+	    if (q == string::npos) {	    // we didn't find the ':'
+		nberror ++;
+		break;
+	    }
+	    if (s[q] != ':') {		    // we should find a : in order to build an identifier
+		nberror ++;
+		break;
+	    }
+
+	    string name = s.substr(p, q-p);
+	    p = q+1;
+
+	    while ((p<l) && isspace(s[p])) p++;	    // remove in-between spaces
+	    q = s.find (lcr, p);
+	    if (q == string::npos) {	    // we didn't find the end of line
+		nberror ++;
+		break;
+	    }
+
+	    mime[name] = s.substr (p, q-p);	    // JDJDJDJD we sgould check duplicate mime entries ?
+	    p = q + lcrs;
+	    while (p<l) {
+		if (s[p] == lcr[0]) break;
+		if (!isspace(s[p])) break;
+		while ((p<l) && isspace(s[p])) p++;
+		q = s.find(lcr, p);
+		if (q == string::npos)		    // we could not find the end of line
+		    return nberror ++;
+
+		mime[name] += s.substr (p, q-p);
+		p = q + lcrs;
+	    }
+	}
+	return nberror;
+    }
+
 
     int populate_reqfields_from_uri (const string& uri, string &document_uri, FieldsMap &reqfields) {
 	size_t p;
@@ -531,9 +615,135 @@ cout << "[" << id << "]   "<< endl
 		request.readbodybytes += bufin.size();
 		if (request.readbodybytes >= request.reqbodylen) {
 		    cout << "[" << id << "] ReadBody : " << request.readbodybytes << " read, " << request.reqbodylen << " schedulled.  diff = " << request.readbodybytes-request.reqbodylen << endl;
-		    populate_reqfields_from_urlencodebody (request.req_body, request.reqfields);
-cout << "[" << id << "]   "<< endl
-     << ostreamMap(request.reqfields, "       reqfields") << endl;
+		    mi = request.mime.find ("Content-Type");
+		    if (mi == request.mime.end()) {
+			cerr << "missing Content-Type with non-empty request body" << endl;	// JDJDJDJD this could have been detected earlier, and the connection shut earlier
+			returnerror.shortcuterror ((*out), request, 400, NULL, "missing Content-Type for request body");
+			flushandclose();
+			break;
+		    }
+		    if (mi->second.substr(0,20) == "multipart/form-data;") {
+// cout << "we're about to deal with a multipart/form-data" << endl;
+
+			bool weseekthefirstboundary = true;
+			string name;
+			string lcr; // the locally supllied in-use crlf string .....
+			size_t lcrs = 0; // the size of lcr
+			size_t lastboundary, currboundary = 0;
+			bool wehaveasmallfield = false;
+			size_t p = mi->second.find ("boundary=");
+			if (p == string::npos) {
+			    cerr << "no boundary given in a multipart/form-data : Content-Type: " << mi->second << endl;
+			    returnerror.shortcuterror ((*out), request, 400, NULL, "missing boundary definition in multipart/form-data");
+			    flushandclose();
+			    break;
+			}
+			string boundary ("--");
+			boundary += mi->second.substr(p+9);
+// cout << "boundary = " << boundary << endl;
+			p = 0;
+			size_t	q = p,
+				l = request.req_body.length();
+			while (p < l) {
+			    p = request.req_body.find(boundary, q);
+			    if (p == string::npos) {
+cout << "could not find next boundary" << endl;
+				break;
+			    }
+
+			    currboundary = p;
+			    if (wehaveasmallfield) {
+				request.reqfields[name] = request.req_body.substr (lastboundary, currboundary - lastboundary - lcrs);
+				wehaveasmallfield = false;
+			    }
+
+			    q = p+boundary.length();
+			    if (q+1 > l) {
+cout << "last boundary too close to the end of body ???" << endl;
+				break;
+			    }
+			    if ((request.req_body[q] == '-') && (request.req_body[q+1] == '-'))	{
+				q += 2;
+if (l-q != 2)
+cout << "reached closing boundary at " << (l - q) << " bytes from end of body" << endl;
+				break;
+			    }
+			    p = q;
+
+			    if (weseekthefirstboundary) {
+				weseekthefirstboundary = false;
+				lcr = fetch_localcr (request.req_body, p);
+				lcrs = lcr.size();
+				if (lcrs == 0) {
+				    cerr << "at boundarizing the post req_body : could not determine the crlf in use" << endl;
+				    break;
+				}
+				
+cout << "crlf in use :";
+{   size_t i;
+    for(i=0;i<lcr.size();i++)
+	cout << "[" << (int)lcr[i] << "]";
+}
+cout << endl;
+			    }
+
+			    q = request.req_body.find (lcr, p);
+			    if (q == string::npos) {
+				cerr << "at boundarizing the post req_body : could not find begining of multipart-entry mime" << endl;
+				break;
+			    }
+			    q += lcrs;
+			    p = q;
+			    {	FieldsMap mpentrymime;
+				read_mimes_in_string (request.req_body, mpentrymime, lcr, q);
+				lastboundary = q;
+// cout << "[" << id << "]   "<< endl
+//      << ostreamMap(mpentrymime, "      pentry[] mime") << endl;
+				FieldsMap::iterator mi = mpentrymime.find ("Content-Disposition");
+				if (mi == mpentrymime.end()) {
+				    cerr << "missing Content-Disposition mime-entry (every boundary should have a Content-Disposition entry)" << endl;
+				    continue;
+				}
+				string& cd = mi->second;
+				size_t p = cd.find(';');
+				if (cd.substr(0, p) != "form-data") {
+				    cerr << "wrong Content-Disposition entry, not \"form-data\" ??" << endl;
+				    continue;
+				}
+				p = cd.find("name=\"", p);
+				if (p == string::npos) {
+				    cerr << "wrong Content-Disposition entry, missing \"name=\" ??" << endl;
+				    continue;
+				}
+				p += 6;
+				size_t q = cd.find ('"', p);
+				if (q == string::npos) {
+				    cerr << "wrong Content-Disposition entry, name=\" is unclosed ??" << endl;
+				    continue;
+				}
+				name = cd.substr(p, q-p);
+				wehaveasmallfield = true;
+			    }
+
+
+			    
+// -----------------------------8595497025756728601942872864
+// Content-Disposition: form-data; name="fichierno1"; filename="subneko_16.png"
+// Content-Type: image/png
+
+
+			}
+
+
+		    } else if (mi->second == "application/x-www-form-urlencoded") {
+cout << "we've a form post !" << endl;
+			populate_reqfields_from_urlencodebody (request.req_body, request.reqfields);
+		    } else {
+			cerr << "unhandled request-body' Content-Type : " << mi->second << endl;	// JDJDJDJD this could have been detected earlier, and the connection shut earlier
+			returnerror.shortcuterror ((*out), request, 415, NULL, "the provided Content-type for request body cannot be handled by server");
+			flushandclose();
+			break;
+		    }
 		    state = NowTreatRequest;
 		    setlinemode();
 		    break;
@@ -545,6 +755,11 @@ cout << "[" << id << "]   "<< endl
 	}
 // cout << "state=" << state << " : request.reqbodylen=" << request.reqbodylen << " request.readbodybytes=" << request.readbodybytes << endl;
 	if (state == NowTreatRequest) {
+
+cout << "============================" << endl;
+cout << "[" << id << "]   "<< endl
+     << ostreamMap(request.reqfields, "      reqfields") << endl;
+
 	    MimeHeader::iterator mi_host = request.mime.find ("Host");
 	    if (mi_host == request.mime.end()) {
 		cerr << "missing Host mime entry" << endl;
