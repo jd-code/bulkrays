@@ -121,7 +121,7 @@ namespace qiconn
 	if (he != NULL) {
 	    if (debug_resolver) cout << "gethostbyname(" << fqdn << ") = " << *he;
 	} else
-	    return -1;		    // A logger et détailler JDJDJDJD
+	    return -1;		    // A logger et dÃ©tailler JDJDJDJD
 
     //    struct servent *se = getservbyport (port, "tcp");
 	
