@@ -14,7 +14,6 @@ namespace bulkrays {
     int percentdecode (const string &src, string &result);
     int percentdecodeform (const string &src, string &result);
 
-    typedef map<string,string> MimeHeader;
 
     class MimeTypes : protected map<string, string> {
 	public:
@@ -26,6 +25,7 @@ namespace bulkrays {
     };
 
     typedef map<string, string> FieldsMap;
+    typedef FieldsMap MimeHeader;
 
     class FieldsMapR : public map<string, const string&> {
 	public:
@@ -34,6 +34,17 @@ namespace bulkrays {
 	    ~FieldsMapR () {}
 	    void import (FieldsMap const &m);
     };
+
+    class BodySubEntry {
+	public:
+	    string const &body, contenttype;
+	    size_t begin, length;
+	    FieldsMap mime;
+	    BodySubEntry (string contenttype, string const &body, size_t begin, size_t length, FieldsMap const &mime) : body(body), contenttype(contenttype), begin(begin), length(length), mime(mime) {};
+	    BodySubEntry (BodySubEntry const &b) : body(b.body), contenttype(b.contenttype), begin(b.begin), length(b.length), mime(b.mime) {};
+	    ~BodySubEntry () {}
+    };
+
 
     string fetch_localcr (const string &s, size_t p=0);
     int read_mimes_in_string (string const &s, FieldsMap &mime, string const &lcr, size_t &p, size_t l = string::npos);
@@ -62,6 +73,7 @@ namespace bulkrays {
 	    FieldsMapR	req_fields;
 	    FieldsMap	uri_fields,
 			body_fields;
+	    map <string, BodySubEntry> content_fields;
 
 
 	    void logger (const string &msg);
@@ -84,6 +96,7 @@ namespace bulkrays {
 		  req_fields.clear();
 		  uri_fields.clear();
 		 body_fields.clear();
+	      content_fields.clear();
 	    }
 	    HTTPRequest (DummyConnection &dc) : pdummyconnection(&dc), statuscode(0), errormsg(NULL), suberrormsg(NULL), req_fields("req_fields") {}
 	    ~HTTPRequest ();
@@ -97,10 +110,10 @@ namespace bulkrays {
 
     BULKRAYS_H_SCOPE
     const string bomb64_gif ("R0lGODdhQABAAIABAP///wAAACwAAAAAQABAAAAC6YSPCcHNCqOcNDlXs97mNg6GlheI5vgcGLSe"
-			   "YLt8rOxyMIzgdXXTaLkLanTCYixlTB6BSiMx+HxGpKKoj3etWZEZamjL7GaV3iXpHN6V0ey0dvxr"
-			   "X5zwnJzUFN/necre0+f3V5Y3SPhmaEiXOLjIuOf4KKcmWWlSaVmF+Xi5ydjpqagZ2jhKCml6Ormh"
-			   "ionVyikI+yk7Kzoxa4eKC6t796rqu8rbKtxmQ2oMmOqqcsyc2fH8lezMBiqpjIYdK7370uz9C31r"
-			   "Nn1iW0d+GtlblM7VHt3HHmg+X1htP3O9z3rur9aZgEMAiigAADs=");
+			     "YLt8rOxyMIzgdXXTaLkLanTCYixlTB6BSiMx+HxGpKKoj3etWZEZamjL7GaV3iXpHN6V0ey0dvxr"
+			     "X5zwnJzUFN/necre0+f3V5Y3SPhmaEiXOLjIuOf4KKcmWWlSaVmF+Xi5ydjpqagZ2jhKCml6Ormh"
+			     "ionVyikI+yk7Kzoxa4eKC6t796rqu8rbKtxmQ2oMmOqqcsyc2fH8lezMBiqpjIYdK7370uz9C31r"
+			     "Nn1iW0d+GtlblM7VHt3HHmg+X1htP3O9z3rur9aZgEMAiigAADs=");
 
     BULKRAYS_H_SCOPE MimeTypes mimetypes("/etc/mime.types");
 #else

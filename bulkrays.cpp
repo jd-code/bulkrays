@@ -105,11 +105,24 @@ namespace bulkrays {
     ostream & operator<< (ostream& cout, FieldsMapR const &m ) {
 	FieldsMapR::const_iterator mi;
 	if (m.empty()) {
-	    cout << m.name << "[]={empty}" << endl;
+	    cout << "      " << m.name << "[]={empty}" << endl;
 	    return cout;
 	}
 	for (mi=m.begin() ; mi!=m.end() ; mi++)
 	    cout << "      " << m.name << "[" << mi->first << "]=\"" << mi->second << '"' << endl;
+	return cout;
+    }
+
+    ostream & operator<< (ostream& cout, map <string, BodySubEntry> const &m ) {
+	map <string, BodySubEntry>::const_iterator mi;
+	if (m.empty()) {
+	    cout << "      content_fields[]={empty}" << endl;
+	    return cout;
+	}
+	for (mi=m.begin() ; mi!=m.end() ; mi++) {
+	    cout << "      content_fields[" << mi->first << "]=\"" << mi->second.contenttype << '"' << endl;
+//	    cout << "                            {" << mi->second.body.substr(mi->second.begin, mi->second.length) << "}" << endl;
+	}
 	return cout;
     }
 
@@ -650,6 +663,10 @@ cout << "[" << id << "]   "<< endl
 			size_t lcrs = 0; // the size of lcr
 			size_t lastboundary, currboundary = 0;
 			bool wehaveasmallfield = false;
+			bool wehaveencontententry = false;
+			FieldsMap mpentrymime;
+			string contenttype;
+
 			size_t p = mi->second.find ("boundary=");
 			if (p == string::npos) {
 			    cerr << "no boundary given in a multipart/form-data : Content-Type: " << mi->second << endl;
@@ -660,10 +677,13 @@ cout << "[" << id << "]   "<< endl
 			string boundary ("--");
 			boundary += mi->second.substr(p+9);
 // cout << "boundary = " << boundary << endl;
+
 			p = 0;
 			size_t	q = p,
 				l = request.req_body.length();
+
 			while (p < l) {
+
 			    p = request.req_body.find(boundary, q);
 			    if (p == string::npos) {
 cout << "could not find next boundary" << endl;
@@ -672,8 +692,15 @@ cout << "could not find next boundary" << endl;
 
 			    currboundary = p;
 			    if (wehaveasmallfield) {
-				request.body_fields[name] = request.req_body.substr (lastboundary, currboundary - lastboundary - lcrs);
-				wehaveasmallfield = false;
+				if (wehaveencontententry) {
+				    BodySubEntry bse(contenttype, request.req_body, lastboundary, currboundary - lastboundary - lcrs, mpentrymime);
+				    request.content_fields.insert(pair<string, BodySubEntry>(name,bse));
+				    // request.content_fields[name] = bse;
+				    wehaveencontententry = false;
+				} else {
+				    request.body_fields[name] = request.req_body.substr (lastboundary, currboundary - lastboundary - lcrs);
+				    wehaveasmallfield = false;
+				}
 			    }
 
 			    q = p+boundary.length();
@@ -713,7 +740,9 @@ cout << "reached closing boundary at " << (l - q) << " bytes from end of body" <
 			    }
 			    q += lcrs;
 			    p = q;
-			    {	FieldsMap mpentrymime;
+			    {	mpentrymime.clear();
+				contenttype.clear();
+
 				read_mimes_in_string (request.req_body, mpentrymime, lcr, q);
 				lastboundary = q;
 // cout << "[" << id << "]   "<< endl
@@ -742,6 +771,13 @@ cout << "reached closing boundary at " << (l - q) << " bytes from end of body" <
 				}
 				name = cd.substr(p, q-p);
 				wehaveasmallfield = true;
+
+				mi = mpentrymime.find ("Content-Type");
+				if (mi == mpentrymime.end())
+				    continue;
+				
+				wehaveencontententry = true;
+				contenttype = mi->second;
 			    }
 
 
@@ -782,8 +818,8 @@ cout << "[" << id << "]   "<< endl
 	    request.req_fields.import(request.uri_fields);
 	    request.req_fields.import(request.body_fields);
 cout << "[" << id << "]   "<< endl
-     << request.req_fields << endl;
-
+     << request.req_fields << endl
+     << request.content_fields << endl;
 
 	    MimeHeader::iterator mi_host = request.mime.find ("Host");
 	    if (mi_host == request.mime.end()) {
