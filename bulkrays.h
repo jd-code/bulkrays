@@ -59,7 +59,7 @@ namespace bulkrays {
 	    size_t readbodybytes;
 	    string req_body;
 
-	    FieldsMapR reqfields;
+	    FieldsMapR	req_fields;
 	    FieldsMap	uri_fields,
 			body_fields;
 
@@ -81,9 +81,11 @@ namespace bulkrays {
 	       readbodybytes = 0;
 		    req_body.clear();
 
-		   reqfields.clear();
+		  req_fields.clear();
+		  uri_fields.clear();
+		 body_fields.clear();
 	    }
-	    HTTPRequest (DummyConnection &dc) : pdummyconnection(&dc), statuscode(0), errormsg(NULL), suberrormsg(NULL), reqfields("reqfields") {}
+	    HTTPRequest (DummyConnection &dc) : pdummyconnection(&dc), statuscode(0), errormsg(NULL), suberrormsg(NULL), req_fields("req_fields") {}
 	    ~HTTPRequest ();
     };
 

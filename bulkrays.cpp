@@ -109,7 +109,7 @@ namespace bulkrays {
 	    return cout;
 	}
 	for (mi=m.begin() ; mi!=m.end() ; mi++)
-	    cout << m.name << "[" << mi->first << "]=\"" << mi->second << '"' << endl;
+	    cout << "      " << m.name << "[" << mi->first << "]=\"" << mi->second << '"' << endl;
 	return cout;
     }
 
@@ -779,10 +779,10 @@ cout << "============================" << endl;
 cout << "[" << id << "]   "<< endl
      << ostreamMap(request.body_fields, "      body_fields") << endl;
 
-	    request.reqfields.import(request.uri_fields);
-	    request.reqfields.import(request.body_fields);
+	    request.req_fields.import(request.uri_fields);
+	    request.req_fields.import(request.body_fields);
 cout << "[" << id << "]   "<< endl
-     << request.reqfields << endl;
+     << request.req_fields << endl;
 
 
 	    MimeHeader::iterator mi_host = request.mime.find ("Host");
