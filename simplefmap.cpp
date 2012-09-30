@@ -1,4 +1,4 @@
-#include <sys/types.h>	    // stat
+#include <sys/types.h>	    // stat opendir
 #include <sys/stat.h>	    // stat
 #include <unistd.h>	    // stat
 #include <fcntl.h>	    // open
@@ -7,6 +7,9 @@
 #include <errno.h>	    // errno
 #include <limits.h>	    // realpath
 #include <stdlib.h>	    // realpath
+
+#include <dirent.h>	    // opendir
+#include <unistd.h>	    // readdir_r pathconf
 
 #include <sys/mman.h>	    // mmap
 
@@ -120,6 +123,53 @@ cerr << "simplefmap::output lstat gave error " << e << " " << strerror (e) << en
 	    }
 
 	    if ((S_IFDIR & statbuf.st_mode) != 0) {
+		DIR * fdir = opendir (canonfname);
+
+		if (fdir == NULL) {
+		    int e = errno;
+cerr << "simplefmap::output opendir(" << canonfname << " ) gave error " << e << " " << strerror (e) << endl;  // this is debug JDJDJDJD we should have an uniform way to log such things
+		    switch (e) {
+			case EACCES:
+			    return error (cout, req, 403, NULL, "file permission denied (003b)");
+
+			case ENOENT:
+			    return error (cout, req, 404, NULL, "Not Found (003)");
+
+			default:
+			    return error (cout, req, 503, NULL, "weidries occured (001)");
+		    }
+		}
+
+		size_t dirent_len = offsetof(struct dirent, d_name) + pathconf(canonfname, _PC_NAME_MAX) + 1;
+		struct dirent *entryp = (struct dirent *) malloc(dirent_len);
+		if (entryp == NULL) {
+cerr << "simplefmap::output could not alloc struct dirent * (size = " << (int)dirent_len << ")" << endl;
+		    return error (cout, req, 503, NULL, "weidries occured (002)");
+		}
+
+	map <string, string> thedir;
+
+		while (true) {
+		    struct dirent *presult;
+		    if (readdir_r(fdir, entryp, &presult) != 0)
+			break;
+
+		    if (presult == NULL)
+			break;
+
+		    struct dirent &entry = *presult;
+
+		    if (entry.d_type == DT_DIR) {
+			string name(entry.d_name);
+			name += '/';
+			thedir [name] = "";
+		    } else
+			thedir [entry.d_name] = "";
+
+		}
+
+		free (entryp);
+
 		stringstream head;
 		// head << req.version << " 200 OK" << endl
 		head << "HTTP/1.1" << " 200 OK" << endl
@@ -138,6 +188,13 @@ cerr << "simplefmap::output lstat gave error " << e << " " << strerror (e) << en
 		s << "<body>" << endl;
 		s << "<h1>" << canonfname << "</h1>" << endl;
 		s << "<h2>" << fname << "</h2>" << endl;
+	{   map <string, string>::iterator mi;
+	    s << "<ul>" << endl;
+	    for (mi=thedir.begin() ; mi!=thedir.end() ; mi++) {
+		s << "<li><a href=\"" << mi->first << "\">" << mi->first << "</a></li>" << endl;
+	    }
+	    s << "</ul>" << endl;
+	}
 		s << "<div>" << endl;
 		s << "<tt>" << endl;
 		s << "<div>" << req.method << "</div>" << endl
@@ -229,7 +286,8 @@ cerr << "simplefmap::output lstat gave error " << e << " " << strerror (e) << en
     };
 
     int simplefmap_global (void) {
-	fmap_urimapper *mapper = new fmap_urimapper("/BIG/home/webs/hashttpp.zz/html");
+	fmap_urimapper *mapper = new fmap_urimapper("/BIG/home/");
+//	fmap_urimapper *mapper = new fmap_urimapper("/BIG/home/webs/hashttpp.zz/html");
 	if (mapper == NULL) {
 	    cerr << "bulkrays::testsite_global could not allocate fmap_urimapper" << endl;
 	    return -1;
