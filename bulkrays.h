@@ -59,12 +59,17 @@ namespace bulkrays {
 	    int statuscode;
 	    const char* errormsg;
 	    const char* suberrormsg;
+	    MimeHeader outmime;
+	    bool expires_set;
+	    bool headerpublished;
+
 	    string method;
 	    string host;
 	    string req_uri;
 	    string document_uri;
 	    string version;
 	    MimeHeader mime;
+
 
 	    size_t reqbodylen;
 	    size_t readbodybytes;
@@ -79,8 +84,20 @@ namespace bulkrays {
 	    void logger (const string &msg);
 	    void logger (const char *msg = NULL);
 
+	    void set_relative_expires (time_t seconds);
+	    void set_relative_expires_jitter (size_t seconds, float jitter = 7.0);
+	    void set_contentlength (size_t l);
+	    void publish_header (void);
+
+	    void initoutmime (void) {
+		 outmime.clear();
+		 outmime["Server"] = "bulkrays/" BULKRAYSVERSION;
+		 outmime["Connection"] = "Keep-Alive";
+	    }
 
 	    void clear (void) {
+		 expires_set = false;
+	     headerpublished = false;
 		      method.clear();
 			host.clear();
 		     req_uri.clear();
@@ -88,6 +105,9 @@ namespace bulkrays {
 		     version.clear();
 			mime.clear();
 		  statuscode = 0;
+		    errormsg = "OK";
+		 suberrormsg = "";
+		initoutmime ();
 
 		  reqbodylen = 0;
 	       readbodybytes = 0;
@@ -98,7 +118,16 @@ namespace bulkrays {
 		 body_fields.clear();
 	      content_fields.clear();
 	    }
-	    HTTPRequest (DummyConnection &dc) : pdummyconnection(&dc), statuscode(0), errormsg(NULL), suberrormsg(NULL), req_fields("req_fields") {}
+	    HTTPRequest (DummyConnection &dc) :
+		pdummyconnection(&dc),
+		statuscode(0),
+		errormsg(NULL),
+		suberrormsg(NULL),
+		expires_set(false),
+		headerpublished(false),
+		req_fields("req_fields") {
+		initoutmime ();
+	    }
 	    ~HTTPRequest ();
     };
 
@@ -130,15 +159,20 @@ namespace bulkrays {
 	    TreatRequest () {}
 	    ~TreatRequest () {}
 	    virtual int output (ostream &cout, HTTPRequest &req) = 0;
-	    int error (ostream &cout, HTTPRequest &req, int statuscode, const char* message=NULL, const char* submessage=NULL);
+	    int error (ostream &cout, HTTPRequest &req, int statuscode, const char* message=NULL, const char* submessage=NULL, bool closeconnection=false);
+	    inline int errorandclose (ostream &cout, HTTPRequest &req, int statuscode, const char* message=NULL, const char* submessage=NULL) {
+		return error (cout, req, statuscode, message, submessage, true);
+	    }
     };
 
     class ReturnError : virtual public TreatRequest {
+	    bool closeconnection;
 	public:
-	    ReturnError () : TreatRequest () {}
+	    ReturnError () : TreatRequest (), closeconnection(true) {}
 	    ~ReturnError () {}
+	    
 	    virtual int output (ostream &cout, HTTPRequest &req);
-	    int shortcuterror (ostream &cout, HTTPRequest &req, int statuscode, const char* message=NULL, const char* submessage=NULL);
+	    int shortcuterror (ostream &cout, HTTPRequest &req, int statuscode, const char* message=NULL, const char* submessage=NULL, bool closeconnection=true);
     };
 
     BULKRAYS_H_SCOPE ReturnError returnerror;

@@ -51,6 +51,7 @@ namespace simplefmap {
 
 	virtual int output (ostream &cout, HTTPRequest &req) {
 	    if (req.method != "GET") {
+		req.set_relative_expires (60);
 		return error (cout, req, 405);	// JDJDJDJD The response MUST include an Allow header containing a list of valid methods for the requested resource. 
 	    }
 
@@ -70,12 +71,15 @@ cerr << "req.document_uri = " << req.document_uri << endl;
 		int e = errno;
 		switch (e) {
 		    case EACCES:
+			req.set_relative_expires (60);
 			return error (cout, req, 403, NULL, "file permission denied (001)");
 
 		    case ENOENT:
+			req.set_relative_expires (20);
 			return error (cout, req, 404, NULL, "Not Found (001f)");
 
 		    case ENOTDIR:
+			req.set_relative_expires (20);
 			return error (cout, req, 404, NULL, "Not Found (001d)");
 
 		    case ENAMETOOLONG:
@@ -83,6 +87,7 @@ cerr << "req.document_uri = " << req.document_uri << endl;
 		    case EIO:
 		    default:
 			cerr << "simplefmap::output realpath gave error " << e << " " << strerror (e) << endl;  // JDJDJDJD we should have an uniform way to log such things
+			req.set_relative_expires (60);
 			return error (cout, req, 500);
 		}
 	    }
@@ -92,6 +97,7 @@ cerr << "req.document_uri = " << req.document_uri << endl;
 		    stringstream err;
 		    err << "simplefmap : FMap_TreatRequest::output : file " << canonfname << " fells outside of rootdir : " << rootdir;
 		    req.logger (err.str());
+		    req.set_relative_expires (60);
 		    return error (cout, req, 403, NULL, "file permission denied (001b)");
 		}
 	    }
@@ -102,12 +108,15 @@ cerr << "req.document_uri = " << req.document_uri << endl;
 cerr << "simplefmap::output lstat gave error " << e << " " << strerror (e) << endl;  // this is debug JDJDJDJD we should have an uniform way to log such things
                 switch (e) {
 		    case EACCES:
+			req.set_relative_expires (60);
 			return error (cout, req, 403, NULL, "file permission denied (002)");
 
 		    case ENOENT:
+			req.set_relative_expires (20);
 			return error (cout, req, 404, NULL, "Not Found (002f)");
 
 		    case ENOTDIR:
+			req.set_relative_expires (20);
 			return error (cout, req, 404, NULL, "Not found (002d)");
 
 		    case ENAMETOOLONG:
@@ -115,10 +124,12 @@ cerr << "simplefmap::output lstat gave error " << e << " " << strerror (e) << en
 		    case EIO:
 		    default:
 			cerr << "simplefmap::output lstat gave error " << e << " " << strerror (e) << endl;  // this is debug JDJDJDJD we should have an uniform way to log such things
+			req.set_relative_expires (60);
 			return error (cout, req, 500);
 		}
 	    }
 	    if (  !( ((S_IFREG & statbuf.st_mode) != 0) || ((S_IFDIR & statbuf.st_mode) != 0) )   )	{   // we didn't reach a file or a directory (maybe a link though, but we don't follow links)
+		req.set_relative_expires (60);
 		return error (cout, req, 403, NULL, "file permission denied (003)");
 	    }
 
@@ -130,12 +141,15 @@ cerr << "simplefmap::output lstat gave error " << e << " " << strerror (e) << en
 cerr << "simplefmap::output opendir(" << canonfname << " ) gave error " << e << " " << strerror (e) << endl;  // this is debug JDJDJDJD we should have an uniform way to log such things
 		    switch (e) {
 			case EACCES:
+			    req.set_relative_expires (60);
 			    return error (cout, req, 403, NULL, "file permission denied (003b)");
 
 			case ENOENT:
+			    req.set_relative_expires (20);
 			    return error (cout, req, 404, NULL, "Not Found (003)");
 
 			default:
+			    req.set_relative_expires (60);
 			    return error (cout, req, 503, NULL, "weidries occured (001)");
 		    }
 		}
@@ -144,6 +158,7 @@ cerr << "simplefmap::output opendir(" << canonfname << " ) gave error " << e << 
 		struct dirent *entryp = (struct dirent *) malloc(dirent_len);
 		if (entryp == NULL) {
 cerr << "simplefmap::output could not alloc struct dirent * (size = " << (int)dirent_len << ")" << endl;
+		    req.set_relative_expires (60);
 		    return error (cout, req, 503, NULL, "weidries occured (002)");
 		}
 
@@ -170,14 +185,9 @@ cerr << "simplefmap::output could not alloc struct dirent * (size = " << (int)di
 
 		free (entryp);
 
-		stringstream head;
-		// head << req.version << " 200 OK" << endl
-		head << "HTTP/1.1" << " 200 OK" << endl
-		     << "Server: BulkRays/" << BULKRAYSVERSION << endl
-		     << "Content-Type: text/html" << endl
-		     << "Connection: keep-alive" << endl
-	//             << "Accept-Ranges: bytes" << endl
-		    ;
+		req.statuscode = 200;
+		req.outmime["Content-Type"] = "text/html";
+
 		stringstream s;
 		s << "<!DOCTYPE html " << endl
 		  << "     PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\"" << endl
@@ -212,9 +222,10 @@ cerr << "simplefmap::output could not alloc struct dirent * (size = " << (int)di
 		s << "</body>" << endl;
 		s << "</html>" << endl;
 
-		head << "Content-Length: " << s.str().size() << endl;
-		head << endl;
-		cout << head.str() << s.str();
+		req.set_contentlength (s.str().size());
+		req.set_relative_expires (20);	    // JDJDJDJD this should be tunable ?
+		req.publish_header();
+		cout << s.str();
 	    } else {
 		int f = open (canonfname, O_RDONLY);
 		if (f < 0) {
@@ -222,6 +233,7 @@ cerr << "simplefmap::output could not alloc struct dirent * (size = " << (int)di
 		    cerr << "simplefmap::output open(" << canonfname << ") failed : " << e << " " << strerror(e) << endl;
 
 		    free (canonfname);
+		    req.set_relative_expires (60);
 		    return error (cout, req, 403, NULL, "file permission denied (004)");
 		}
 
@@ -232,6 +244,7 @@ cerr << "simplefmap::output could not alloc struct dirent * (size = " << (int)di
 
 		    close (f);
 		    free (canonfname);
+		    req.set_relative_expires (60);
 		    return error (cout, req, 403, NULL, "file permission denied (005)");
 		}
 
@@ -248,16 +261,12 @@ cerr << "simplefmap::output could not alloc struct dirent * (size = " << (int)di
 			mime_type = *pmt;
 		}
 
-		stringstream head;		
-		head << "HTTP/1.1" << " 200 OK" << endl
-		     << "Server: BulkRays/" << BULKRAYSVERSION << endl
-		     << "Content-Type: " << mime_type << endl
-		     << "Connection: keep-alive" << endl;
+		req.statuscode = 200;
+		req.outmime["Content-Type"] = mime_type;
+		req.set_contentlength (statbuf.st_size);
+		req.set_relative_expires (60);	// JDJDJDJD this should be tuneable, with mime type ?
+		req.publish_header();
 
-		head << "Content-Length: " << statbuf.st_size << endl
-		     << endl;
-
-		cout << head.str();
 
 		MMapBuffer* mmbuf = new MMapBuffer (f, fmap, statbuf.st_size);
 		if (mmbuf == NULL) {
@@ -286,7 +295,7 @@ cerr << "simplefmap::output could not alloc struct dirent * (size = " << (int)di
     };
 
     int simplefmap_global (void) {
-	fmap_urimapper *mapper = new fmap_urimapper("/BIG/home/");
+	fmap_urimapper *mapper = new fmap_urimapper("/home/");
 //	fmap_urimapper *mapper = new fmap_urimapper("/BIG/home/webs/hashttpp.zz/html");
 	if (mapper == NULL) {
 	    cerr << "bulkrays::testsite_global could not allocate fmap_urimapper" << endl;

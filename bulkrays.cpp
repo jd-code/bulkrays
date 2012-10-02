@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <time.h>
+
 #include <errno.h>
 
 #define QICONN_H_GLOBINST
@@ -374,6 +376,66 @@ namespace bulkrays {
 	    cout << pdummyconnection->getname() << " " << method << " " << host << req_uri << " " << statuscode << " " << msg << endl;
     }
 
+    char * rfc1123date_offset (char *buf, time_t offset) {
+	time_t t;
+	time (&t);
+	t += offset;
+	struct tm tm;
+	gmtime_r(&t, &tm);
+
+static const char* dayname[] = {
+    "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"
+};
+static const char* monthname[] = {
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+};
+	snprintf (buf, 39, "%3s, %02d %3s %4d %02d:%02d:%02d GMT",
+		dayname[tm.tm_wday],
+		tm.tm_mday,
+		monthname[tm.tm_mon],
+		tm.tm_year + 1900,
+		tm.tm_hour,
+		tm.tm_min,
+		tm.tm_sec
+	    );
+	return buf;
+    }
+
+    void HTTPRequest::set_relative_expires (time_t seconds) {
+	char buf[40];
+	outmime["Expires"] = rfc1123date_offset (buf, seconds);
+	expires_set = true;
+    }
+
+    void set_relative_expires_jitter (size_t seconds, float jitter = 7.0) {
+    }
+
+    void HTTPRequest::publish_header (void) {
+	if (headerpublished) {
+	    cerr << "HTTPRequest::publish_header : header already published !!!" << endl;
+	    return;
+	}
+	char buf[40];
+	ostream &cout = *(pdummyconnection->out) ;
+	cout << "HTTP/1.1 " << statuscode << ' ' 
+	     << ((errormsg == NULL) ? status_message[statuscode] : errormsg ) << endl
+	     << "Date: " << rfc1123date_offset(buf, 0) << endl;
+
+	MimeHeader::iterator mi;
+	for (mi=outmime.begin() ; mi!=outmime.end() ; mi++)
+	    cout << mi->first << ": " << mi->second << endl;
+
+	cout << endl;
+	headerpublished = true;
+    }
+
+    void HTTPRequest::set_contentlength (size_t l) {
+	char buf[40];
+	snprintf (buf, 39, "%ld", (long) l);
+	outmime["Content-Length"] = buf;
+    }
+
     HTTPRequest::~HTTPRequest () {
     }
 
@@ -436,7 +498,7 @@ namespace bulkrays {
 	    req.errormsg = mi->second;
 	}
 	
-	body << xhtml_header << endl;
+	body << xhtml_header;
 	body << "<html>" << endl
 	     << "<head>" << endl
 	     << " <title>" << req.statuscode << " " << req.errormsg << "</title>" << endl
@@ -462,29 +524,31 @@ namespace bulkrays {
 	     << "<p>bulkrays http server</p>" << endl
 	     << "</body>";
 
-	stringstream head;
-	head << "HTTP/1.1 " << req.statuscode << " " << status_message[req.statuscode] << endl
-	     << "Server: BulkRays/" << BULKRAYSVERSION << endl
-	     << "Content-Type: text/html" << endl
-	     << "Accept-Ranges: bytes" << endl
-	     << "Retry-After: 5" << endl	// JDJDJDJD should be tunable
-	     << "Connection: close" << endl;
-	head << "Content-Length: " << body.str().size() << endl;
-	head << endl;
-	cout << head.str() << body.str();
+	req.outmime ["Content-Type"] = "text/html";
+	req.outmime ["Accept-Ranges"] = "bytes";
+//	req.outmime ["Retry-After"] = "5";
+	req.set_contentlength (body.str().size());
+	if (!req.expires_set)
+	    req.set_relative_expires (10);
+	if (closeconnection)
+	    req.outmime["Connection"] = "close";
+
+	req.publish_header();
+	cout << body.str();
 
 	req.logger ("yop");
 
 	return 0;
     }
 
-    int ReturnError::shortcuterror (ostream &cout, HTTPRequest &req, int statuscode, const char* message /*=NULL*/, const char* submessage /*=NULL*/) {
+    int ReturnError::shortcuterror (ostream &cout, HTTPRequest &req, int statuscode, const char* message /*=NULL*/, const char* submessage /*=NULL*/, bool closeconnection) {
+	ReturnError::closeconnection = closeconnection;
 	req.errormsg = message, req.suberrormsg = submessage, req.statuscode = statuscode;
 	return output (cout, req);
     }
 
-    int TreatRequest::error (ostream &cout, HTTPRequest &req, int statuscode, const char* message /*=NULL*/, const char* submessage /*=NULL*/) {
-	return returnerror.shortcuterror (cout, req, statuscode, message, submessage);
+    int TreatRequest::error (ostream &cout, HTTPRequest &req, int statuscode, const char* message /*=NULL*/, const char* submessage /*=NULL*/, bool closeconnection) {
+	return returnerror.shortcuterror (cout, req, statuscode, message, submessage, closeconnection);
     }
 
     HttppConn::HttppConn (int fd, struct sockaddr_in const &client_addr) : DummyConnection(fd, client_addr),request(*this) {
@@ -534,6 +598,7 @@ namespace bulkrays {
 		if (p == string::npos) {
 		    request.method = bufin; // JDJDJDJD unused ????
 		    cerr << "wrong request line (method only ?): " << bufin << endl;
+		    request.set_relative_expires (60);
 		    returnerror.shortcuterror ((*out), request, 400, NULL, "wrong request line (method only ?)");
 		    flushandclose();
 		    break;
@@ -548,6 +613,7 @@ cout << "[" << id << "] req_uri = " << request.req_uri << endl;
 cout << "[" << id << "]   "<< endl
      << ostreamMap(request.uri_fields, "       uri_fields") << endl;
 		    cerr << "wrong request line (missing version ?): " << bufin << endl;
+		    request.set_relative_expires (60);
 		    returnerror.shortcuterror ((*out), request, 400, NULL, "wrong request line (missing http version ?)");
 		    flushandclose();
 		    break;
@@ -578,6 +644,7 @@ cout << "[" << id << "]   "<< endl
 		}
 		if (!isalnum(bufin[0])) {
 		    cerr << "wrong mime header-name (bad starting char ?) : " << bufin << endl;
+		    request.set_relative_expires (0);   // this isn't cachable, the uri may be identical and mimes differents
 		    returnerror.shortcuterror ((*out), request, 400, NULL, "wrong mime header-name");
 		    flushandclose();
 		    break;
@@ -621,12 +688,14 @@ cout << "[" << id << "]   "<< endl
 		p = bufin.find (':');
 		if (p == string::npos) {
 		    cerr << "wrong mime header-name (missing ':' ?) : " << bufin << endl;
+		    request.set_relative_expires (0);   // this isn't cachable, the uri may be identical and mimes differents
 		    returnerror.shortcuterror ((*out), request, 400, NULL, "wrong mime header-name (missing ':' ?)");
 		    flushandclose();
 		    break;
 		}
 		if (!isalnum(bufin[0])) {
 		    cerr << "wrong mime header-name (bad starting char ?) : " << bufin << endl;
+		    request.set_relative_expires (0);   // this isn't cachable, the uri may be identical and mimes differents
 		    returnerror.shortcuterror ((*out), request, 400, NULL, "wrong mime header-name (bad starting char ? [2])");
 		    flushandclose();
 		    break;
@@ -650,6 +719,7 @@ cout << "[" << id << "]   "<< endl
 		    mi = request.mime.find ("Content-Type");
 		    if (mi == request.mime.end()) {
 			cerr << "missing Content-Type with non-empty request body" << endl;	// JDJDJDJD this could have been detected earlier, and the connection shut earlier
+			request.set_relative_expires (0);   // this isn't cachable, the uri may be identical and mimes differents
 			returnerror.shortcuterror ((*out), request, 400, NULL, "missing Content-Type for request body");
 			flushandclose();
 			break;
@@ -670,6 +740,7 @@ cout << "[" << id << "]   "<< endl
 			size_t p = mi->second.find ("boundary=");
 			if (p == string::npos) {
 			    cerr << "no boundary given in a multipart/form-data : Content-Type: " << mi->second << endl;
+			    request.set_relative_expires (0);   // this isn't cachable, the uri may be identical and mimes differents
 			    returnerror.shortcuterror ((*out), request, 400, NULL, "missing boundary definition in multipart/form-data");
 			    flushandclose();
 			    break;
@@ -795,6 +866,7 @@ cout << "we've a form post !" << endl;
 			populate_reqfields_from_urlencodebody (request.req_body, request.body_fields);
 		    } else {
 			cerr << "unhandled request-body' Content-Type : " << mi->second << endl;	// JDJDJDJD this could have been detected earlier, and the connection shut earlier
+			request.set_relative_expires (0);   // this isn't cachable, the uri may be identical and mimes differents
 			returnerror.shortcuterror ((*out), request, 415, NULL, "the provided Content-type for request body cannot be handled by server");
 			flushandclose();
 			break;
@@ -824,6 +896,7 @@ cout << "[" << id << "]   "<< endl
 	    MimeHeader::iterator mi_host = request.mime.find ("Host");
 	    if (mi_host == request.mime.end()) {
 		cerr << "missing Host mime entry" << endl;
+		request.set_relative_expires (60);
 		returnerror.shortcuterror ((*out), request, 503, NULL, "missing Host mime entry");  // JDJDJDJD we should have a default host
 								    // JDJDJDJD we should be able to tune the error message (Unknown virtual host.)
 		flushandclose();
@@ -833,6 +906,7 @@ cout << "[" << id << "]   "<< endl
 	    THostMapper::iterator mi = hostmapper.find (request.host);
 	    if (mi == hostmapper.end()) {
 		cerr << "unhandled Host :" << request.host << endl;
+		request.set_relative_expires (60);
 		returnerror.shortcuterror ((*out), request, 404, "Unkown Virtual Host");  // JDJDJDJD we should have a default host
 								    // JDJDJDJD we should be able to tune the error message (Unknown virtual host.)
 		flushandclose();
@@ -841,6 +915,7 @@ cout << "[" << id << "]   "<< endl
 	    TreatRequest* treatrequest = mi->second->treatrequest (request);
 	    if (treatrequest == NULL) {
 		cerr << "NULL treatrequest from hostmapper for Host " << request.host << endl;
+		request.set_relative_expires (60);
 		returnerror.shortcuterror ((*out), request, 404, NULL, "No Handler for URI");  // JDJDJDJD we should be able to tune the err
 		flushandclose();
 		return;
