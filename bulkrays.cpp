@@ -418,7 +418,8 @@ namespace bulkrays {
 	time (&t);
 	t += offset;
 	struct tm tm;
-	gmtime_r(&t, &tm);
+	// gmtime_r(&t, &tm);
+	localtime_r(&t, &tm);
 
 static const char* dayname[] = {
     "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"
@@ -983,7 +984,7 @@ int main (int nb, char ** cmde) {
 
 
     string flogname("/var/log/bulkrays/access_log");
-    ofstream cflog (flogname.c_str(), ios::out | ios::ate);
+    ofstream cflog (flogname.c_str(),  ios::app);
     if (!cflog) {
 	int e = errno;
 	cerr << "could not open " << flogname << " : " << strerror(e) << endl;
