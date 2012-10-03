@@ -366,14 +366,51 @@ namespace bulkrays {
 
 
     void HTTPRequest::logger (const string &msg) {
-	cout << pdummyconnection->getname() << " " << method << " " << host << req_uri << " " << statuscode << " " << msg << endl;
+	time_t t;
+	time (&t);
+	struct tm tm;
+	gmtime_r(&t, &tm);
+
+//	clog << pdummyconnection->getname() << " " << method << " " << host << req_uri << " " << statuscode << " " << msg << endl;
+	(*clog) << pdummyconnection->getname()
+	     << " - - "	    // JDJDJDJD here stuff about authentication
+	     << "[" << setfill('0') << setw(2)
+		<< tm.tm_mday << '/'
+		<< tm.tm_mon+1 << '/'
+		<< setw(4) << tm.tm_year + 1900 << ':'
+		<< setw(2) << tm.tm_hour << ':'
+		<< tm.tm_min << ':'
+		<< tm.tm_sec << "] \""
+	     << method << " " << host << req_uri << " " << version << "\" "
+	     << statuscode << " size \"";
+
+	MimeHeader::iterator mi = mime.find("Referer");
+
+	if (mi == mime.end())
+	    (*clog) << " - ";
+	else
+	    (*clog) << mi->second;
+
+	(*clog) << "\" \""
+		<< msg << "\" ";
+
+	mi = mime.find("User-Agent");
+	if (mi == mime.end())
+	    (*clog) << "\" - \"";
+	else
+	    (*clog) << mi->second;
+	(*clog) << endl;
     }
 
     void HTTPRequest::logger (const char *msg /*=NULL*/) {
-	if (msg == NULL)
-	    cout << pdummyconnection->getname() << " " << method << " " << host << req_uri << " " << statuscode << endl;
+	if (msg != NULL)
+	    logger (string(msg));
 	else
-	    cout << pdummyconnection->getname() << " " << method << " " << host << req_uri << " " << statuscode << " " << msg << endl;
+	    logger (string(""));
+//	if (msg == NULL)
+//	    cout << pdummyconnection->getname() << " " << method << " " << host << req_uri << " " << statuscode << endl;
+//	else
+//	    cout << pdummyconnection->getname() << " " << method << " " << host << req_uri << " " << statuscode << " " << msg << endl;
     }
 
     char * rfc1123date_offset (char *buf, time_t offset) {
@@ -536,19 +573,20 @@ static const char* monthname[] = {
 	req.publish_header();
 	cout << body.str();
 
-	req.logger ("yop");
-
 	return 0;
     }
 
     int ReturnError::shortcuterror (ostream &cout, HTTPRequest &req, int statuscode, const char* message /*=NULL*/, const char* submessage /*=NULL*/, bool closeconnection) {
 	ReturnError::closeconnection = closeconnection;
 	req.errormsg = message, req.suberrormsg = submessage, req.statuscode = statuscode;
-	return output (cout, req);
+	int e = output (cout, req);
+	req.logger ("yop");
+	return e;
     }
 
     int TreatRequest::error (ostream &cout, HTTPRequest &req, int statuscode, const char* message /*=NULL*/, const char* submessage /*=NULL*/, bool closeconnection) {
-	return returnerror.shortcuterror (cout, req, statuscode, message, submessage, closeconnection);
+	req.errormsg = message, req.suberrormsg = submessage, req.statuscode = statuscode;
+	return returnerror.output (cout, req);
     }
 
     HttppConn::HttppConn (int fd, struct sockaddr_in const &client_addr) : DummyConnection(fd, client_addr),request(*this) {
@@ -927,6 +965,8 @@ cout << "[" << id << "]   "<< endl
 	    flush();
 	}
     }
+
+    ostream * HTTPRequest::clog = &cerr;
 }
 
 using namespace std;
@@ -942,6 +982,14 @@ int main (int nb, char ** cmde) {
     char * addr = cmde [1];
 
 
+    string flogname("/var/log/bulkrays/access_log");
+    ofstream cflog (flogname.c_str(), ios::out | ios::ate);
+    if (!cflog) {
+	int e = errno;
+	cerr << "could not open " << flogname << " : " << strerror(e) << endl;
+	return -1;
+    }
+    HTTPRequest::clog = &cflog;
 
 
     int s = server_pool (port, addr);

@@ -80,6 +80,7 @@ namespace bulkrays {
 			body_fields;
 	    map <string, BodySubEntry> content_fields;
 
+static ostream * clog;
 
 	    void logger (const string &msg);
 	    void logger (const char *msg = NULL);
