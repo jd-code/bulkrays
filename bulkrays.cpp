@@ -975,16 +975,38 @@ using namespace qiconn;
 using namespace bulkrays;
 
 int main (int nb, char ** cmde) {
-    int port = 10080;
+    string address ("0.0.0.0");
+    int port = 80;
+    string flogname("/var/log/bulkrays/access_log");	// JDJDJDJD we should introduce a DEFINEd scheme for such defaults
 
+    int i;
+    for (i=1 ; i<nb ; i++) {
+	if (strncmp (cmde[i], "--help", 6) == 0) {
+	    cout << cmde[0] << "   \\" << endl
+			    << "      [--bind=[address][:port]]  \\" << endl
+			    << "      [--access_log=filename]" << endl;
+	    return 0;
+	} else if (strncmp (cmde[i], "--bind=", 7) == 0) {
+	    string scheme(cmde[i]+7);
+	    size_t p = scheme.find(':');
+	    if (p == string::npos) {	// we have only an addr ?
+		address = scheme;
+	    } else {
+		port = atoi (scheme.substr(p+1).c_str());
+		if (p>0)
+		    address = scheme.substr(0,p);
+	    }
+	    cerr << "will try to bind : " << address << ":" << port << endl;
+	} else if (strncmp (cmde[i], "--access_log=", 13) == 0) {
+	    if (*(cmde[i]+13) != 0) {
+		flogname = cmde[i]+13;
+	    }
+	} else {
+	    cerr << "unknown option : " << cmde[i] << endl;
+	}
+    }
 
-    if (nb < 2)
-	return 1;
-    char * addr = cmde [1];
-
-
-    string flogname("/var/log/bulkrays/access_log");
-    ofstream cflog (flogname.c_str(),  ios::app);
+    ofstream cflog (flogname.c_str(), ios::app);
     if (!cflog) {
 	int e = errno;
 	cerr << "could not open " << flogname << " : " << strerror(e) << endl;
@@ -993,12 +1015,12 @@ int main (int nb, char ** cmde) {
     HTTPRequest::clog = &cflog;
 
 
-    int s = server_pool (port, addr);
+    int s = server_pool (port, address.c_str());
     if (s < 0) {
 	cerr << "could not instanciate connection pool, bailing out !" << endl;
 	return -1;
     }
-    HttppBinder *ls = new HttppBinder (s, port, addr);
+    HttppBinder *ls = new HttppBinder (s, port, address.c_str());
     if (ls == NULL) {
 	cerr << "could not instanciate HttppBinder, bailing out !" << endl;
 	return -1;

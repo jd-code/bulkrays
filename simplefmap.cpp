@@ -187,6 +187,10 @@ cerr << "simplefmap::output could not alloc struct dirent * (size = " << (int)di
 
 		req.statuscode = 200;
 		req.outmime["Content-Type"] = "text/html";
+req.statuscode = 401;
+req.outmime["WWW-Authenticate"] = "Basic realm=\"WallyWorld\"";
+// WWW-Authenticate: Basic realm="WallyWorld"
+
 
 		stringstream s;
 		s << "<!DOCTYPE html " << endl
