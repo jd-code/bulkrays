@@ -14,7 +14,7 @@ allstrip: all
 
 
 vimtest: all
-	./bulkrays --bind=127.0.0.1:10080
+	./bulkrays --bind=127.0.0.1:10080 --user=$$USER
 	### ddd --args ./qigong    -pidfile=/tmp/qigongbuild.pid -logfile=testqigong.log -debugout -port 1364 -nofork &
 
 bulkrays: bulkrays.o qiconn.o testsite.o bootstrap.o testsite.o simplefmap.o

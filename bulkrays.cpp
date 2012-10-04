@@ -5,6 +5,10 @@
 
 #include <time.h>
 
+#include <sys/types.h>
+#include <pwd.h>
+#include <grp.h>
+
 #include <errno.h>
 
 #define QICONN_H_GLOBINST
@@ -975,6 +979,8 @@ using namespace qiconn;
 using namespace bulkrays;
 
 int main (int nb, char ** cmde) {
+    string user ("www-data");
+    string group;
     string address ("0.0.0.0");
     int port = 80;
     string flogname("/var/log/bulkrays/access_log");	// JDJDJDJD we should introduce a DEFINEd scheme for such defaults
@@ -984,6 +990,7 @@ int main (int nb, char ** cmde) {
 	if (strncmp (cmde[i], "--help", 6) == 0) {
 	    cout << cmde[0] << "   \\" << endl
 			    << "      [--bind=[address][:port]]  \\" << endl
+			    << "      [--user=[user][:group]]  \\" << endl
 			    << "      [--access_log=filename]" << endl;
 	    return 0;
 	} else if (strncmp (cmde[i], "--bind=", 7) == 0) {
@@ -1001,9 +1008,63 @@ int main (int nb, char ** cmde) {
 	    if (*(cmde[i]+13) != 0) {
 		flogname = cmde[i]+13;
 	    }
+	} else if (strncmp (cmde[i], "--user=", 7) == 0) {
+	    string scheme(cmde[i]+7);
+	    size_t p = scheme.find(':');
+	    if (p == string::npos) {	// we have only a user
+		user = scheme;
+	    } else {
+		if (!scheme.substr(p+1).empty())
+		    group = scheme.substr(p+1);
+		if (p>0)
+		    user = scheme.substr(0,p);
+	    }
 	} else {
 	    cerr << "unknown option : " << cmde[i] << endl;
 	}
+    }
+
+
+    int s = server_pool (port, address.c_str());
+    if (s < 0) {
+	cerr << "could not instanciate connection pool, bailing out !" << endl;
+	return -1;
+    }
+
+    {	struct passwd *pwent = getpwnam (user.c_str());
+	if (pwent == NULL) {
+	    cerr << "could not retrieve uid for user=" << user << endl;
+	    return -1;
+	}
+	uid_t uid = pwent->pw_uid;
+	gid_t gid = pwent->pw_gid;
+
+	if (!group.empty()) {
+	    struct group * grent = getgrnam (group.c_str());
+	    if (grent == NULL) {
+		cerr << "could not retrieve gid for group=" << group << endl;
+		return -1;
+	    }
+	    gid = grent->gr_gid;
+	}
+
+	if (setgid (gid) != 0) {
+	    int e = errno;
+	    cerr << "could not change gid privileges ? " << strerror(e) << endl;
+	    return -1;
+	}
+	if (setuid (uid) != 0) {
+	    int e = errno;
+	    cerr << "could not change uid privileges ? " << strerror(e) << endl;
+	    return -1;
+	}
+    }
+
+
+    HttppBinder *ls = new HttppBinder (s, port, address.c_str());
+    if (ls == NULL) {
+	cerr << "could not instanciate HttppBinder, bailing out !" << endl;
+	return -1;
     }
 
     ofstream cflog (flogname.c_str(), ios::app);
@@ -1014,17 +1075,6 @@ int main (int nb, char ** cmde) {
     }
     HTTPRequest::clog = &cflog;
 
-
-    int s = server_pool (port, address.c_str());
-    if (s < 0) {
-	cerr << "could not instanciate connection pool, bailing out !" << endl;
-	return -1;
-    }
-    HttppBinder *ls = new HttppBinder (s, port, address.c_str());
-    if (ls == NULL) {
-	cerr << "could not instanciate HttppBinder, bailing out !" << endl;
-	return -1;
-    }
 
     ConnectionPool cp;
 
