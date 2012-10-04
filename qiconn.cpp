@@ -73,26 +73,26 @@ namespace qiconn
 	s = socket(AF_INET, SOCK_STREAM, 0);
 	if (s == -1) {
 	    int e = errno;
-	    cerr << "could not create socket (for listenning connections :" << port << ") : " << strerror (e) << endl ;
+	    cerr << "could not create socket (for listenning connections " << addr << ":" << port << ") : " << strerror (e) << endl ;
 	    return -1;
 	}
 
 	{	int yes = 1;
 	    if (setsockopt (s, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof (yes)) != 0) {
 		int e = errno;
-		cerr << "could not setsockopt (for listenning connections :" << port << ") : " << strerror (e) << endl ;
+		cerr << "could not setsockopt (for listenning connections " << addr << ":" << port << ") : " << strerror (e) << endl ;
 		return -1;
 	    }
 	}
 
 	if (bind (s, (struct sockaddr *)&serv_addr, sizeof (serv_addr)) != 0) {
 	    int e = errno;
-	    cerr << "could not bind socket (for listenning connections :" << port << ") : " << strerror (e) << endl ;
+	    cerr << "could not bind socket (for listenning connections " << addr << ":" << port << ") : " << strerror (e) << endl ;
 	    return -1;
 	}
 	if (listen (s, MAX_QUEUDED_CONNECTIONS) != 0) {
 	    int e = errno;
-	    cerr << "could not listen socket (for listenning connections :" << port << ") : " << strerror (e) << endl ;
+	    cerr << "could not listen socket (for listenning connections " << addr << ":" << port << ") : " << strerror (e) << endl ;
 	    return -1;
 	}
 	return s;
