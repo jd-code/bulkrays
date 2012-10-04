@@ -90,11 +90,7 @@ static ostream * clog;
 	    void set_contentlength (size_t l);
 	    void publish_header (void);
 
-	    void initoutmime (void) {
-		 outmime.clear();
-		 outmime["Server"] = "bulkrays/" BULKRAYSVERSION;
-		 outmime["Connection"] = "Keep-Alive";
-	    }
+	    void initoutmime (void);
 
 	    void clear (void) {
 		 expires_set = false;

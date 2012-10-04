@@ -478,6 +478,12 @@ static const char* monthname[] = {
 	outmime["Content-Length"] = buf;
     }
 
+    void HTTPRequest::initoutmime (void) {
+	 outmime.clear();
+	 outmime["Server"] = "bulkrays/" BULKRAYSVERSION;
+	 outmime["Connection"] = "Keep-Alive";
+    }
+
     HTTPRequest::~HTTPRequest () {
     }
 
