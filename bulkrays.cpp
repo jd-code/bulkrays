@@ -600,7 +600,7 @@ static const char* monthname[] = {
 	return returnerror.output (cout, req);
     }
 
-    HttppConn::HttppConn (int fd, struct sockaddr_in const &client_addr) : DummyConnection(fd, client_addr),request(*this) {
+    HttppConn::HttppConn (int fd, struct sockaddr_in const &client_addr) : SocketConnection(fd, client_addr),request(*this) {
 	id = idnum;
 	idnum ++;
 	state = HTTPRequestLine;

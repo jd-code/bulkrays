@@ -195,20 +195,6 @@ namespace qiconn
 	    virtual void poll (void) = 0;
     };
 
-    class SocketConnection : public Connection
-    {
-	protected:
-	                           struct sockaddr_in client_addr;
-	                           string name;
-	public:
-	        virtual ~SocketConnection (void) { if (debug_fddestr) cerr << "destruction of fd[" << fd << ", " << name << "]" << endl; }
-	                 SocketConnection (int fd, struct sockaddr_in const &client_addr);
-	             virtual void setname (struct sockaddr_in const &client_addr);
-	    inline virtual string getname (void) {
-		return name;
-	    }
-    };
-
     /*
      *  ---------------------------- select pooling : polls a pool of connection via select ------------------
      */
@@ -283,9 +269,11 @@ namespace qiconn
 	    void pull (Connection *c);
     };
 
+
     /*
-     *  ---------------------------- DummyConnection : connection that simply echo in hex what you just typed 
+     *  ---------------------------- BufConnection : let's put some line buffering on top of Connection
      */
+
 
     class DummyBuffer {	    // used for transmitting buffer description and action to take care at end of buffer use
 	public:
@@ -295,15 +283,13 @@ namespace qiconn
 	    virtual ~DummyBuffer () {}
     };
 
-    class DummyConnection : public SocketConnection
+    class BufConnection : public Connection
     {
 	private:
 					   bool	destroyatendofwrite;
 					 string	bufout;
 					 size_t	wpos;
 					   bool raw;
-		 static list<DummyConnection *>	ldums;
-	      list<DummyConnection *>::iterator	me;
 	protected:
 				   DummyBuffer*	pdummybuffer;
 					   bool	givenbuffer;
@@ -311,10 +297,11 @@ namespace qiconn
 					 string	bufin;
 	public:
 				   stringstream	*out;
-					virtual	~DummyConnection (void);
-						DummyConnection (int fd, struct sockaddr_in const &client_addr);
+					virtual	~BufConnection (void);
+						BufConnection (int fd);
 				   virtual void	read (void);
-				   virtual void	lineread (void);
+				   virtual void	lineread (void) = 0;
+//				   virtual void	lineread (void) = 0;
 					   void setrawmode (void);
 					   void setlinemode (void);
 					   void	flush (void);
@@ -325,10 +312,73 @@ namespace qiconn
 					    int pushdummybuffer (DummyBuffer* pdb);
     };
 
-    #ifdef QICONN_H_GLOBINST
-	list<DummyConnection *> DummyConnection::ldums;
-    #endif
+    class SocketConnection : public BufConnection
+    {
+	protected:
+	                           struct sockaddr_in client_addr;
+	                           string name;
+	public:
+	        virtual ~SocketConnection (void) { if (debug_fddestr) cerr << "destruction of fd[" << fd << ", " << name << "]" << endl; }
+	                 SocketConnection (int fd, struct sockaddr_in const &client_addr);
+	             virtual void setname (struct sockaddr_in const &client_addr);
+	    inline virtual string getname (void) {
+		return name;
+	    }
+    };
 
+
+#ifdef USEDUMMYCONNECTION
+    /*
+     *  ---------------------------- DummyConnection : connection that simply echo in hex what you just typed 
+     */
+
+    class DummyConnection : public SocketConnection {
+	public: 
+//	    DummyConnection (int fd, struct sockaddr_in const &client_addr) : SocketConnection (fd, client_addr) {}
+//	    virtual void read (void) {	BufConnection::read(); }
+//	    virtual void write (void) { BufConnection::write();} 
+//	    virtual string getname (void) { return SocketConnection::getname(); }
+//	    virtual void poll (void) = 0;
+						DummyConnection (int fd, struct sockaddr_in const &client_addr) : SocketConnection (fd, client_addr) {}
+					virtual	~DummyConnection (void);
+				   virtual void	lineread (void) {}
+				   virtual void poll (void) {}
+    };
+
+//    class DummyConnection : public SocketConnection
+//    {
+//	private:
+//					   bool	destroyatendofwrite;
+//					 string	bufout;
+//					 size_t	wpos;
+//					   bool raw;
+//		 static list<DummyConnection *>	ldums;
+//	      list<DummyConnection *>::iterator	me;
+//	protected:
+//				   DummyBuffer*	pdummybuffer;
+//					   bool	givenbuffer;
+//					   bool givenbufferiswaiting;
+//					 string	bufin;
+//	public:
+//				   stringstream	*out;
+//					virtual	~DummyConnection (void);
+//						DummyConnection (int fd, struct sockaddr_in const &client_addr);
+//				   virtual void	read (void);
+//				   virtual void	lineread (void);
+//					   void setrawmode (void);
+//					   void setlinemode (void);
+//					   void	flush (void);
+//					   void	flushandclose (void);
+//				   virtual void	write (void);
+//				   virtual void poll (void) {}
+//				   virtual void reconnect_hook (void);
+//					    int pushdummybuffer (DummyBuffer* pdb);
+//    };
+//
+//    #ifdef QICONN_H_GLOBINST
+//	list<DummyConnection *> DummyConnection::ldums;
+//    #endif
+#endif // USEDUMMYCONNECTION
     /*
      *  ---------------------------- ListeningSocket : the fd that watches incoming cnx ----------------------
      */
@@ -343,7 +393,7 @@ namespace qiconn
 			       void setname (const string & name);
 				    ListeningSocket (int fd);
 				    ListeningSocket (int fd, const string & name);
-	   virtual DummyConnection* connection_binder (int fd, struct sockaddr_in const &client_addr);
+	   virtual SocketConnection* connection_binder (int fd, struct sockaddr_in const &client_addr) = 0;
 		     virtual string getname (void);
 		       virtual void read (void);
 		       virtual void write (void);

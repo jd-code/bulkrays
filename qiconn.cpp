@@ -14,6 +14,7 @@
 
 #include <iomanip>
 
+#define USEDUMMYCONNECTION
 #include "qiconn.h"
 
 namespace qiconn
@@ -305,7 +306,7 @@ namespace qiconn
 
 
     SocketConnection::SocketConnection (int fd, struct sockaddr_in const &client_addr)
-	: Connection (fd)
+	: BufConnection (fd)
     {
 	setname (client_addr);
     }
@@ -531,15 +532,14 @@ namespace qiconn
 
 
     /*
-     *  ---------------------------- DummyConnection : connection that simply echo in hex what you just typed 
+     *  ---------------------------- BufConnection : let's put some line buffering on top of Connection
      */
 
     #define BUFLEN 1024
-    DummyConnection::~DummyConnection (void) {
-	ldums.erase (me);
+    BufConnection::~BufConnection (void) {
     };
 
-    DummyConnection::DummyConnection (int fd, struct sockaddr_in const &client_addr) : SocketConnection (fd, client_addr) {
+    BufConnection::BufConnection (int fd) : Connection (fd) {
 	raw = false;
 	pdummybuffer = NULL;
 	givenbuffer = false;
@@ -547,20 +547,17 @@ namespace qiconn
 	destroyatendofwrite = false;
 	out = new stringstream ();
 	wpos = 0;
-	ldums.push_back (this);
-	me = ldums.end();
-	me--;
     }
 
-    void DummyConnection::setrawmode (void) {
+    void BufConnection::setrawmode (void) {
 	raw = true;
     }
 
-    void DummyConnection::setlinemode (void) {
+    void BufConnection::setlinemode (void) {
 	raw = false;
     }
 
-    void DummyConnection::read (void) {
+    void BufConnection::read (void) {
 	char s[BUFLEN];
 	ssize_t n = ::read (fd, (void *)s, BUFLEN);
 	
@@ -573,7 +570,7 @@ namespace qiconn
 	}
 if (debug_dummyin)
 {   int i;
-    cerr << "DummyConnection::read got[";
+    cerr << "BufConnection::read got[";
     for (i=0 ; i<n ; i++)
 	cerr << s[i];
     cerr << endl;
@@ -587,7 +584,7 @@ if (debug_dummyin)
 			    i++;
 		    }
 if (debug_lineread) {
-    cerr << "DummyConnection::read->lineread(" << bufin << ")" << endl;
+    cerr << "BufConnection::read->lineread(" << bufin << ")" << endl;
 }
 		    lineread ();
 		    bufin = "";
@@ -599,7 +596,7 @@ if (debug_lineread) {
 	}
 	if (raw) {
 if (debug_lineread) {
-    cerr << "DummyConnection::read->lineread(" << bufin << ")" << endl;
+    cerr << "BufConnection::read->lineread(" << bufin << ")" << endl;
 }
 	    lineread ();
 	    bufin = "";
@@ -610,41 +607,41 @@ if (debug_lineread) {
 	}
     }
 
-    void DummyConnection::reconnect_hook (void) {
+    void BufConnection::reconnect_hook (void) {
 	    schedule_for_destruction();
     }
 
-    void DummyConnection::lineread (void) {
-	string::iterator si;
-	for (si=bufin.begin() ; si!=bufin.end() ; si++) {
-	    (*out) << setw(2) << setbase(16) << setfill('0') << (int)(*si) << ':' ;
-	}
-	(*out) << " | " << bufin << endl;
-	flush ();
+//    void BufConnection::lineread (void) {
+//	string::iterator si;
+//	for (si=bufin.begin() ; si!=bufin.end() ; si++) {
+//	    (*out) << setw(2) << setbase(16) << setfill('0') << (int)(*si) << ':' ;
+//	}
+//	(*out) << " | " << bufin << endl;
+//	flush ();
+//
+//	if (bufin.find("shut") == 0) {
+//	    if (cp != NULL) {
+//		cerr << "shutting down on request from fd[" << getname() << "]" << endl;
+//		cp->tikkle();
+//		// cp->closeall();
+//		// exit (0);
+//	    }
+//	    else
+//		cerr << "could not shut down from fd[" << getname() << "] : no cp registered" << endl;
+//	}
+//
+//	if (bufin.find("wall ") == 0) {
+//	    list<BufConnection *>::iterator li;
+//	    int i = 0;
+//	    for (li=ldums.begin() ; li!=ldums.end() ; li++) {
+//		(*(*li)->out) << i << " : " << bufin.substr(5) << endl;
+//		(*li)->flush();
+//		i++;
+//	    }
+//	}
+//    }
 
-	if (bufin.find("shut") == 0) {
-	    if (cp != NULL) {
-		cerr << "shutting down on request from fd[" << getname() << "]" << endl;
-		cp->tikkle();
-		// cp->closeall();
-		// exit (0);
-	    }
-	    else
-		cerr << "could not shut down from fd[" << getname() << "] : no cp registered" << endl;
-	}
-
-	if (bufin.find("wall ") == 0) {
-	    list<DummyConnection *>::iterator li;
-	    int i = 0;
-	    for (li=ldums.begin() ; li!=ldums.end() ; li++) {
-		(*(*li)->out) << i << " : " << bufin.substr(5) << endl;
-		(*li)->flush();
-		i++;
-	    }
-	}
-    }
-
-    void DummyConnection::flush(void) {
+    void BufConnection::flush(void) {
 	if (cp != NULL)
 	    cp->reqw (fd);
 	bufout += out->str();
@@ -655,14 +652,14 @@ if (debug_dummyout) {
 	out = new stringstream ();
     }
 
-    void DummyConnection::flushandclose(void) {
+    void BufConnection::flushandclose(void) {
 	destroyatendofwrite = true;
 	flush();
     }
 
-    int DummyConnection::pushdummybuffer (DummyBuffer* pdb) {
+    int BufConnection::pushdummybuffer (DummyBuffer* pdb) {
 	if (givenbufferiswaiting || givenbuffer) {
-	    cerr << "DummyConnection::pushdummybuffer : silly attempt to push a buffer onto another" << endl;
+	    cerr << "BufConnection::pushdummybuffer : silly attempt to push a buffer onto another" << endl;
 	    cerr << "     givenbufferiswaiting = " << (givenbufferiswaiting ? "true" : "false") << endl;
 	    cerr << "     givenbuffer = " << (givenbuffer ? "true" : "false") << endl;
 	    // JDJDJDJD ca devrait pouvoir ce faire pourtant !
@@ -675,7 +672,7 @@ if (debug_dummyout) {
 	return 0;
     }
 
-    void DummyConnection::write (void) {
+    void BufConnection::write (void) {
 	if (givenbuffer) {
 	    ssize_t size = pdummybuffer->length - wpos,
 		   nb;
@@ -784,6 +781,265 @@ if (debug_dummyout) {
 	}
     }
 
+
+#ifdef USEDUMMYCONNECTION
+    DummyConnection::~DummyConnection (void) {};
+#endif
+
+//    /*
+//     *  ---------------------------- DummyConnection : connection that simply echo in hex what you just typed 
+//     */
+//
+//    #define BUFLEN 1024
+//    DummyConnection::~DummyConnection (void) {
+//	ldums.erase (me);
+//    };
+//
+//    DummyConnection::DummyConnection (int fd, struct sockaddr_in const &client_addr) : SocketConnection (fd, client_addr) {
+//	raw = false;
+//	pdummybuffer = NULL;
+//	givenbuffer = false;
+//	givenbufferiswaiting = false;
+//	destroyatendofwrite = false;
+//	out = new stringstream ();
+//	wpos = 0;
+//	ldums.push_back (this);
+//	me = ldums.end();
+//	me--;
+//    }
+//
+//    void DummyConnection::setrawmode (void) {
+//	raw = true;
+//    }
+//
+//    void DummyConnection::setlinemode (void) {
+//	raw = false;
+//    }
+//
+//    void DummyConnection::read (void) {
+//	char s[BUFLEN];
+//	ssize_t n = ::read (fd, (void *)s, BUFLEN);
+//	
+//	if (debug_transmit) {
+//	    int i;
+//	    clog << "fd=" << fd << "; ";
+//	    for (i=0 ; i<n ; i++)
+//		clog << s[i];
+//	    clog << endl;
+//	}
+//if (debug_dummyin)
+//{   int i;
+//    cerr << "DummyConnection::read got[";
+//    for (i=0 ; i<n ; i++)
+//	cerr << s[i];
+//    cerr << endl;
+//}
+//	int i;
+//	for (i=0 ; i<n ; i++) {
+//	    if (!raw) {
+//		if ((s[i]==10) || (s[i]==13) || s[i]==0) {
+//		    if (i+1<n) {
+//			if ( ((s[i]==10) && (s[i+1]==13)) || ((s[i]==13) && (s[i+1]==10)) )
+//			    i++;
+//		    }
+//if (debug_lineread) {
+//    cerr << "DummyConnection::read->lineread(" << bufin << ")" << endl;
+//}
+//		    lineread ();
+//		    bufin = "";
+//		} else
+//		    bufin += s[i];
+//	    } else {
+//		bufin += s[i];
+//	    }
+//	}
+//	if (raw) {
+//if (debug_lineread) {
+//    cerr << "DummyConnection::read->lineread(" << bufin << ")" << endl;
+//}
+//	    lineread ();
+//	    bufin = "";
+//	}
+//	if (n==0) {
+//	    cerr << "read() returned 0. we may close the fd[" << fd << "] ????" << endl;
+//	    reconnect_hook();
+//	}
+//    }
+//
+//    void DummyConnection::reconnect_hook (void) {
+//	    schedule_for_destruction();
+//    }
+//
+//    void DummyConnection::lineread (void) {
+//	string::iterator si;
+//	for (si=bufin.begin() ; si!=bufin.end() ; si++) {
+//	    (*out) << setw(2) << setbase(16) << setfill('0') << (int)(*si) << ':' ;
+//	}
+//	(*out) << " | " << bufin << endl;
+//	flush ();
+//
+//	if (bufin.find("shut") == 0) {
+//	    if (cp != NULL) {
+//		cerr << "shutting down on request from fd[" << getname() << "]" << endl;
+//		cp->tikkle();
+//		// cp->closeall();
+//		// exit (0);
+//	    }
+//	    else
+//		cerr << "could not shut down from fd[" << getname() << "] : no cp registered" << endl;
+//	}
+//
+//	if (bufin.find("wall ") == 0) {
+//	    list<DummyConnection *>::iterator li;
+//	    int i = 0;
+//	    for (li=ldums.begin() ; li!=ldums.end() ; li++) {
+//		(*(*li)->out) << i << " : " << bufin.substr(5) << endl;
+//		(*li)->flush();
+//		i++;
+//	    }
+//	}
+//    }
+//
+//    void DummyConnection::flush(void) {
+//	if (cp != NULL)
+//	    cp->reqw (fd);
+//	bufout += out->str();
+//if (debug_dummyout) {
+//    cerr << "                                                                                      ->out=" << out->str() << endl ;
+//}
+//	delete (out); 
+//	out = new stringstream ();
+//    }
+//
+//    void DummyConnection::flushandclose(void) {
+//	destroyatendofwrite = true;
+//	flush();
+//    }
+//
+//    int DummyConnection::pushdummybuffer (DummyBuffer* pdb) {
+//	if (givenbufferiswaiting || givenbuffer) {
+//	    cerr << "DummyConnection::pushdummybuffer : silly attempt to push a buffer onto another" << endl;
+//	    cerr << "     givenbufferiswaiting = " << (givenbufferiswaiting ? "true" : "false") << endl;
+//	    cerr << "     givenbuffer = " << (givenbuffer ? "true" : "false") << endl;
+//	    // JDJDJDJD ca devrait pouvoir ce faire pourtant !
+//	    return -1;
+//	}
+//	givenbufferiswaiting = true;
+//	pdummybuffer = pdb;
+////	if (cp != NULL)
+////	    cp->reqw (fd);
+//	return 0;
+//    }
+//
+//    void DummyConnection::write (void) {
+//	if (givenbuffer) {
+//	    ssize_t size = pdummybuffer->length - wpos,
+//		   nb;
+//	    if (size == 0) {
+//		givenbuffer = false;
+//		if (!bufout.empty()) {	// JDJDJDJD UGGLY !
+//		    if (cp != NULL)
+//			cp->reqw (fd);
+//		}
+//		delete (pdummybuffer);
+//		if (bufout.empty() && destroyatendofwrite)
+//		    schedule_for_destruction ();
+//		return;
+//	    }
+//
+//	    if (size > BUFLEN) {
+//		if (cp != NULL)
+//		    cp->reqw (fd);
+//		nb = BUFLEN;
+//	    } else {
+//		nb = size;
+//	    }
+//	    ssize_t nt = ::write (fd, pdummybuffer->start+wpos, nb);
+//	    if (nt != -1) {
+//		wpos += nt;
+//		if (nt != nb) {
+//		    cerr << "some pending chars" << endl;
+//		    if (cp != NULL)
+//			cp->reqw (fd);
+//		}
+//	    } else {
+//		int e = errno;
+//
+//		if (e == EPIPE) {   /* we can assume the connection is shut (and wasn't detected by read) */
+//		    reconnect_hook();
+//		} else {
+//		    cerr << "error writing via givenbuffer to fd[" << fd << ":" << getname() << "] : (" << e << ") " << strerror (e) << endl ;
+//		}
+//	    }
+//	    if (wpos == (size_t)pdummybuffer->length) {
+//		wpos = 0;
+//
+//		givenbuffer = false;
+//		if (!bufout.empty()) {	// JDJDJDJD UGGLY !
+//		    if (cp != NULL)
+//			cp->reqw (fd);
+//		}
+//		delete (pdummybuffer);
+//		if (bufout.empty() && destroyatendofwrite)
+//		    schedule_for_destruction ();
+//		return;
+//
+//	    }
+//// =================================================================================
+//	} else {
+//	    ssize_t size = (ssize_t)bufout.size() - wpos,
+//		   nb;
+//	    if (size == 0) {
+//		if (givenbufferiswaiting) {
+//		    givenbuffer = true;
+//		    givenbufferiswaiting = false;
+//		    if (cp != NULL)
+//			cp->reqw (fd);
+//		} else if (destroyatendofwrite) {
+//		    schedule_for_destruction ();
+//		}
+//		return;
+//	    }
+//
+//	    if (size > BUFLEN) {
+//		if (cp != NULL)
+//		    cp->reqw (fd);
+//		nb = BUFLEN;
+//	    } else {
+//		nb = size;
+//	    }
+//	    ssize_t nt = ::write (fd, bufout.c_str()+wpos, nb);
+//	    if (nt != -1) {
+//		wpos += nt;
+//		if (nt != nb) {
+//		    cerr << "some pending chars" << endl;
+//		    if (cp != NULL)
+//			cp->reqw (fd);
+//		}
+//	    } else {
+//		int e = errno;
+//
+//		if (e == EPIPE) {   /* we can assume the connection is shut (and wasn't detected by read) */
+//		    reconnect_hook();
+//		} else {
+//		    cerr << "error writing to fd[" << fd << ":" << getname() << "] : (" << e << ") " << strerror (e) << endl ;
+//		}
+//	    }
+//	    if (wpos == bufout.size()) {
+//		wpos = 0;
+//		bufout = "";
+//		if (givenbufferiswaiting) {
+//		    givenbuffer = true;
+//		    givenbufferiswaiting = false;
+//		    if (cp != NULL)
+//			cp->reqw (fd);
+//		} else if (destroyatendofwrite) {
+//		    schedule_for_destruction ();
+//		}
+//	    }
+//	}
+//    }
+
     /*
      *  ---------------------------- ListeningSocket : the fd that watches incoming cnx ----------------------
      */
@@ -800,7 +1056,7 @@ if (debug_dummyout) {
 	}
 	cerr << "new connection from fd[" << f << ":" << client_addr << "]" << endl;
 	if (cp != NULL) {
-	    DummyConnection * pdc = connection_binder (f, client_addr);
+	    SocketConnection * pdc = connection_binder (f, client_addr);
 	    if (pdc == NULL) {
 		cerr << "error: could not add connection : failed to allocate DummyConnection" << endl;
 		return -1;
@@ -816,9 +1072,9 @@ if (debug_dummyout) {
 
     ListeningSocket::~ListeningSocket (void) {}
 
-    DummyConnection * ListeningSocket::connection_binder (int fd, struct sockaddr_in const &client_addr) {
-	return new DummyConnection (fd, client_addr);
-    }
+//    SocketConnection * ListeningSocket::connection_binder (int fd, struct sockaddr_in const &client_addr) {
+//	return new SocketConnection (fd, client_addr);
+//    }
     
     void ListeningSocket::setname (const string & name) {
 	ListeningSocket::name = name;

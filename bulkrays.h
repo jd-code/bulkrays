@@ -55,7 +55,7 @@ namespace bulkrays {
     class HTTPRequest
     {
 	public:
-	    DummyConnection *pdummyconnection;
+	    SocketConnection *pdummyconnection;
 	    int statuscode;
 	    const char* errormsg;
 	    const char* suberrormsg;
@@ -115,7 +115,7 @@ static ostream * clog;
 		 body_fields.clear();
 	      content_fields.clear();
 	    }
-	    HTTPRequest (DummyConnection &dc) :
+	    HTTPRequest (SocketConnection &dc) :
 		pdummyconnection(&dc),
 		statuscode(0),
 		errormsg(NULL),
@@ -187,7 +187,7 @@ static ostream * clog;
 
     int bootstrap_global (void);
 
-    class HttppConn : public DummyConnection
+    class HttppConn : public SocketConnection
     {
 	public:
 static int idnum;
@@ -232,7 +232,7 @@ int HttppConn::idnum = 0;
 		newname << ":" << port;
 		setname (newname.str());
 	    }
-	    virtual DummyConnection* connection_binder (int fd, struct sockaddr_in const &client_addr) {
+	    virtual SocketConnection* connection_binder (int fd, struct sockaddr_in const &client_addr) {
 		return new HttppConn (fd, client_addr);
 	    }
 	    virtual void poll (void) {}
