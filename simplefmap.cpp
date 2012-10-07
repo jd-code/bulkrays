@@ -105,7 +105,7 @@ cerr << "req.document_uri = " << req.document_uri << endl;
 	    struct stat statbuf;
 	    if (lstat (canonfname, &statbuf) != 0) {
 		int e = errno;
-cerr << "simplefmap::output lstat gave error " << e << " " << strerror (e) << endl;  // this is debug JDJDJDJD we should have an uniform way to log such things
+cerr << "simplefmap::output lstat(" << canonfname << ") gave error " << e << " " << strerror (e) << endl;  // this is debug JDJDJDJD we should have an uniform way to log such things
                 switch (e) {
 		    case EACCES:
 			req.set_relative_expires (60);
@@ -123,7 +123,7 @@ cerr << "simplefmap::output lstat gave error " << e << " " << strerror (e) << en
 		    case EINVAL:
 		    case EIO:
 		    default:
-			cerr << "simplefmap::output lstat gave error " << e << " " << strerror (e) << endl;  // this is debug JDJDJDJD we should have an uniform way to log such things
+			cerr << "simplefmap::output lstat(" << canonfname << ") gave error " << e << " " << strerror (e) << endl;  // this is debug JDJDJDJD we should have an uniform way to log such things
 			req.set_relative_expires (60);
 			return error (cout, req, 500);
 		}
