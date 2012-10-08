@@ -1,4 +1,5 @@
 #include <iostream>
+
 namespace bulkrays { int testsite_global (void); }		// testsite.cpp
 namespace simplefmap { int simplefmap_global (void); }		// simplefmap.cpp
 

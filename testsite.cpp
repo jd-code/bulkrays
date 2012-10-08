@@ -1,4 +1,4 @@
-#include "bulkrays.h"
+#include <bulkrays/bulkrays.h>
 
 namespace bulkrays {
     using namespace std;

@@ -13,7 +13,7 @@
 
 #include <sys/mman.h>	    // mmap
 
-#include "bulkrays.h"
+#include <bulkrays/bulkrays.h>
 
 namespace simplefmap {
     using namespace std;

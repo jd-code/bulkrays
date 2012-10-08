@@ -24,4 +24,8 @@ bulkrays:
 
 simplefmap:
     [done] lire les correspondances terminaisons de fichier -> mime
+    valider que le fopen + mmap ne change pas la date du fichier et qu'il est impossible d'ecrire !!!
+
+testsite:
+    mettre a jour avec generation des headers propre et suppression du -DBULKRAYSVERSION
 

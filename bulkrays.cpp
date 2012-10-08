@@ -13,7 +13,7 @@
 
 #define QICONN_H_GLOBINST
 #define BULKRAYS_H_GLOBINST
-#include "bulkrays.h"
+#include "bulkrays/bulkrays.h"
 
 namespace bulkrays {
     using namespace std;

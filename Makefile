@@ -1,6 +1,7 @@
 
 #DEBUG=
 DEBUG=-g
+INCLUDES=-I./include
 PREFIX=/usr/local
 SHELL=/bin/sh
 VERSION=0.0.3
@@ -18,15 +19,17 @@ vimtest: all
 	### ddd --args ./qigong    -pidfile=/tmp/qigongbuild.pid -logfile=testqigong.log -debugout -port 1364 -nofork &
 
 bulkrays: bulkrays.o qiconn.o testsite.o bootstrap.o testsite.o simplefmap.o
-	g++ ${DEBUG} -Wall -o  bulkrays bulkrays.o qiconn.o bootstrap.o testsite.o simplefmap.o
+	g++ ${DEBUG} ${INCLUDES} -Wall -o  bulkrays bulkrays.o qiconn.o bootstrap.o testsite.o simplefmap.o
 
-bulkrays.o: bulkrays.cpp qiconn.h bulkrays.h
-	g++ ${DEBUG} -DBULKRAYSVERSION="\"${VERSION}\"" -Wall -c bulkrays.cpp
+bulkrays.o: bulkrays.cpp include/bulkrays/bulkrays.h
+	g++ ${DEBUG} ${INCLUDES} -DBULKRAYSVERSION="\"${VERSION}\"" -Wall -c bulkrays.cpp
 
 
-qiconn.o: qiconn.cpp qiconn.h
-	g++ ${DEBUG} -Wall -c qiconn.cpp
+qiconn.o: qiconn.cpp include/qiconn/qiconn.h
+	g++ ${DEBUG} ${INCLUDES} -Wall -c qiconn.cpp
 
+
+include/bulkrays/bulkrays.h: include/qiconn/qiconn.h
 
 clean:
 	rm -f *.o bulkrays
@@ -41,12 +44,12 @@ doc: *.h *.cpp bulkrays.dox
 .PHONY: distclean
 
 
-bootstrap.o: bootstrap.cpp bulkrays.h qiconn.h
-	g++ ${DEBUG} -DBULKRAYSVERSION="\"${VERSION}\"" -Wall -c bootstrap.cpp
+bootstrap.o: bootstrap.cpp include/bulkrays/bulkrays.h
+	g++ ${DEBUG} ${INCLUDES} -Wall -c bootstrap.cpp
 
-testsite.o: testsite.cpp bulkrays.h qiconn.h
-	g++ ${DEBUG} -DBULKRAYSVERSION="\"${VERSION}\"" -Wall -c testsite.cpp
+testsite.o: testsite.cpp include/bulkrays/bulkrays.h
+	g++ ${DEBUG} ${INCLUDES} -DBULKRAYSVERSION="\"${VERSION}\"" -Wall -c testsite.cpp
 
-simplefmap.o: simplefmap.cpp bulkrays.h qiconn.h
-	g++ ${DEBUG} -DBULKRAYSVERSION="\"${VERSION}\"" -Wall -c simplefmap.cpp
+simplefmap.o: simplefmap.cpp include/bulkrays/bulkrays.h
+	g++ ${DEBUG} ${INCLUDES} -Wall -c simplefmap.cpp
 

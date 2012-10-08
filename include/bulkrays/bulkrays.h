@@ -5,7 +5,7 @@
 #endif
 
 
-#include "qiconn.h"
+#include <qiconn/qiconn.h>
 
 namespace bulkrays {
     using namespace std;

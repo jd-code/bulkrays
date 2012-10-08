@@ -15,7 +15,7 @@
 #include <iomanip>
 
 #define USEDUMMYCONNECTION
-#include "qiconn.h"
+#include "qiconn/qiconn.h"
 
 namespace qiconn
 {
