@@ -1082,11 +1082,10 @@ int main (int nb, char ** cmde) {
     HTTPRequest::clog = &cflog;
 
 
-    ConnectionPool cp;
 
-    cp.init_signal ();
+    connectionpool.init_signal ();
     
-    cp.push (ls);
+    connectionpool.push (ls);
     
     struct timeval timeout;
     timeout.tv_sec = 0;
@@ -1095,7 +1094,7 @@ int main (int nb, char ** cmde) {
     status_message_globalinit ();
     bootstrap_global ();
 
-    cp.select_loop (timeout);
+    connectionpool.select_loop (timeout);
 
     cerr << "terminating" << endl;
 

@@ -128,6 +128,8 @@ static ostream * clog;
 	    ~HTTPRequest ();
     };
 
+    BULKRAYS_H_SCOPE ConnectionPool connectionpool;
+
 #ifdef BULKRAYS_H_GLOBINST
     BULKRAYS_H_SCOPE
     const string xhtml_header ("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
