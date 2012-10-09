@@ -460,8 +460,21 @@ static const char* monthname[] = {
 	}
 	char buf[40];
 	ostream &cout = *(pdummyconnection->out) ;
+
+	const char * outputerror;
+	if (errormsg == NULL) {
+	    map <int,const char *>::iterator mi = status_message.find(statuscode);
+	    if (mi == status_message.end()) {
+cerr << "HTTPRequest::publish_header : statuscode [" << statuscode << "] has no associated message" << endl;	// JDJDJDJD a typical place where host+uri should be welcomed
+		outputerror = "Sorry, No Message";
+	    } else {
+		outputerror = mi->second;
+	    }
+	} else {
+	    outputerror = errormsg;
+	}
 	cout << "HTTP/1.1 " << statuscode << ' ' 
-	     << ((errormsg == NULL) ? status_message[statuscode] : errormsg ) << endl
+	     << outputerror << endl
 	     << "Date: " << rfc1123date_offset(buf, 0) << endl;
 
 	MimeHeader::iterator mi;
