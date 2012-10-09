@@ -71,7 +71,7 @@ namespace qiconn
 	}
 
 	int s;
-	s = socket(AF_INET, SOCK_STREAM, 0);
+	s = socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0);
 	if (s == -1) {
 	    int e = errno;
 	    cerr << "could not create socket (for listenning connections " << addr << ":" << port << ") : " << strerror (e) << endl ;
@@ -144,7 +144,7 @@ namespace qiconn
 	}
 
 	if (debug_connect) cerr << "init_connect -> socket (PF_INET, SOCK_STREAM, tcp)" << endl;
-	int s = socket(PF_INET, SOCK_STREAM, pe->p_proto);
+	int s = socket(PF_INET, SOCK_STREAM | SOCK_CLOEXEC, pe->p_proto);
 	if (s == -1) {
 	    int e = errno;
 	    cerr << "could not create socket (for connection to " << fqdn << ":" << port << ") : " << strerror (e) << endl ;
@@ -546,6 +546,10 @@ namespace qiconn
 	givenbufferiswaiting = false;
 	destroyatendofwrite = false;
 	out = new stringstream ();
+	if (out == NULL) {
+	    int e = errno;
+cerr << "BufConnection::BufConnection : could not allocate stringstream ? : " << strerror (e) << endl;
+	}
 	wpos = 0;
     }
 
@@ -1048,7 +1052,7 @@ if (debug_dummyout) {
     int ListeningSocket::addconnect (int socket) {
 	struct sockaddr_in client_addr;
 	socklen_t size_addr = sizeof(client_addr);
-	int f = accept ( socket, (struct sockaddr *) &client_addr, &size_addr );
+	int f = accept4 ( socket, (struct sockaddr *) &client_addr, &size_addr, SOCK_CLOEXEC );
 	if (f < 0) {
 	    int e = errno;
 	    cerr << "could not accept connection : " << strerror (e) << endl ;
