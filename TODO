@@ -6,6 +6,8 @@ qiconn:
     faire une gestion de queue de suites de buffers a vider en output ... de natures differentes (stream ou mmap voire autre ...
 
 bulkrays:
+    percent-decode fields names ????
+    fournir des htmlencode htmldecode
     [done] manque une methode generique de construction des headers mimes et de la ligne de status
     [done] BUG many errors are logged twice !
     size delivered aren't logged yet ...

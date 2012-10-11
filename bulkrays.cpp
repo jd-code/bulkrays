@@ -689,6 +689,8 @@ cout << "[" << id << "]   "<< endl
 		request.version = bufin.substr(q);
 cout << "[" << id << "] version = " << request.version << endl;
 		state = MIMEHeader;
+		mimevalue.clear();		// JDJDJDJD this is rather tricky
+		mimeheadername.clear();		// JDJDJDJD this is rather tricky
 		break;
     
 	    case MIMEHeader:

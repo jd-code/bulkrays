@@ -1,3 +1,6 @@
+#ifndef INCL_BULKRAYS_H
+#define INCL_BULKRAYS_H
+
 #ifdef BULKRAYS_H_GLOBINST
 #define BULKRAYS_H_SCOPE
 #else
@@ -241,3 +244,6 @@ int HttppConn::idnum = 0;
     };
 
 }
+
+#endif // INCL_BULKRAYS_H
+
