@@ -52,6 +52,10 @@ namespace qiconn
     QICONN_H_SCOPE bool debug_fddestr;		    //!< debug connection (fd) destructions
 #endif
 
+    inline int millidiff (struct timeval const&a, struct timeval const&b) {
+	return (a.tv_sec-b.tv_sec) * 1000 + (a.tv_usec-b.tv_usec) / 1000;
+    }
+
     /*
      *  ---------------------------- cerr hook to syslog -----------------------------------------------------
      */
