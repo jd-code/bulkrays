@@ -101,6 +101,41 @@ namespace bulkrays {
 	return nberror;
     }
 
+
+    string xmlencode (const string &s) {
+	string r;
+
+	size_t i, l=s.size();
+	for (i=0 ; i<l ; i++) {
+	    switch (s[i]) {
+		case '"':   r += "&quot;";  break;
+		case '&':   r += "&amp;";   break;
+		case '\'':  r += "&apos;";  break;
+		case '<':   r += "&lt;";    break;
+		case '>':   r += "&gt;";    break;
+		default:    r += s[i];	    break;
+	    }
+	}
+	return r;
+    }
+
+    void xmlencode (ostream & cout, const string &s) {
+	size_t i, l=s.size();
+	for (i=0 ; i<l ; i++) {
+	    switch (s[i]) {
+		case '"':   cout << "&quot;";	break;
+		case '&':   cout << "&amp;";   	break;
+		case '\'':  cout << "&apos;";  	break;
+		case '<':   cout << "&lt;";    	break;
+		case '>':   cout << "&gt;";    	break;
+		default:    cout << s[i];	break;
+	    }
+	}
+    }
+
+
+
+
     void FieldsMapR::import (FieldsMap const &m) {
 	FieldsMap::const_iterator mi;
 

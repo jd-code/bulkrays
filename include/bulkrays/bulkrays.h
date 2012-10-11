@@ -16,7 +16,8 @@ namespace bulkrays {
 
     int percentdecode (const string &src, string &result);
     int percentdecodeform (const string &src, string &result);
-
+    string xmlencode (const string &s);
+    void xmlencode (ostream & cout, const string &s);
 
     class MimeTypes : protected map<string, string> {
 	public:
