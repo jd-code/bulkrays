@@ -56,10 +56,12 @@ namespace bulkrays {
     int populate_reqfields_from_urlencodebody (const string& body, FieldsMap &reqfields, size_t p=0);
     int populate_reqfields_from_uri (const string& uri, string &document_uri, FieldsMap &reqfields);
 
+    class HttppConn;
+
     class HTTPRequest
     {
 	public:
-	    SocketConnection *pdummyconnection;
+	    HttppConn *pdummyconnection;
 	    int statuscode;
 	    const char* errormsg;
 	    const char* suberrormsg;
@@ -119,7 +121,7 @@ static ostream * clog;
 		 body_fields.clear();
 	      content_fields.clear();
 	    }
-	    HTTPRequest (SocketConnection &dc) :
+	    HTTPRequest (HttppConn &dc) :
 		pdummyconnection(&dc),
 		statuscode(0),
 		errormsg(NULL),
@@ -204,11 +206,13 @@ static int idnum;
 		NextMIMEHeader,		// either continuing a mime value or next mime entry
 //		MessageBody,		// starting the datas following mime header (Content-Length troubles)
 		ReadBody,		// buffering the body of the message itself
-		NowTreatRequest		// all message suposley rewad, we treat ...
+		NowTreatRequest,	// all message suposely read, we treat ...
+		WaitingEOW		// the treatment is finished w're waiting for the end of normal transmission
 	    } State;
 	    State state;
 
 	    string mimevalue, mimeheadername;
+	    size_t lastbwindex;
 
 	    HTTPRequest request;
 	    int id;
@@ -219,6 +223,8 @@ static int idnum;
 	    HttppConn (int fd, struct sockaddr_in const &client_addr);
 	    virtual void lineread (void);
 	    virtual void poll (void) {};
+	    virtual void eow_hook (void);
+	    virtual void reconnect_hook (void);
     };
 #ifdef BULKRAYS_H_GLOBINST
 int HttppConn::idnum = 0;

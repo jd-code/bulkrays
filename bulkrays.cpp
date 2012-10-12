@@ -421,7 +421,9 @@ namespace bulkrays {
 		<< tm.tm_min << ':'
 		<< tm.tm_sec << "] \""
 	     << method << " " << host << req_uri << " " << version << "\" "
-	     << statuscode << " size \"";
+	     << statuscode << " "
+	     << (int)(pdummyconnection->gettotw() - pdummyconnection->lastbwindex)
+	     << " ";
 
 	MimeHeader::iterator mi = mime.find("Referer");
 
@@ -652,6 +654,9 @@ cerr << "HTTPRequest::publish_header : statuscode [" << statuscode << "] has no 
 	id = idnum;
 	idnum ++;
 	state = HTTPRequestLine;
+	lastbwindex = gettotw();
+if (lastbwindex != 0)
+cout << "[" << id << "]   lastbwindex = " << lastbwindex << " shouldn't it be 0 ???" << endl;
     }
     HttppConn::~HttppConn (void) {
 	// nothing to do there yet
@@ -690,6 +695,10 @@ cerr << "HTTPRequest::publish_header : statuscode [" << statuscode << "] has no 
 	MimeHeader::iterator mi;
 
 	switch (state) {
+	    case WaitingEOW:
+		cerr << "received some stuff before end of transmission occured ?!" << endl;	// JDJDJDJD proper logging is cruelly missing here
+cout << "[" << id << "] some garbage while waiting eow : {" << bufin << "}" << endl;
+		break;
 	    case HTTPRequestLine:
 		p = bufin.find (' ');
 		if (p == string::npos) {
@@ -1020,10 +1029,29 @@ cout << "[" << id << "]   "<< endl
 		return;
 	    }
 	    treatrequest->output ((*out), request);
-	    state = HTTPRequestLine;
+	    // state = HTTPRequestLine;
+	    state = WaitingEOW;
+	    flush();
+	}
+    }
+
+    void HttppConn::reconnect_hook (void) {
+	if (state == WaitingEOW) {  // probably a shortened transmission !
+	    request.statuscode = 999;	    // JDJDJDJD don't really know what to do here 
 	    request.logger();
 	    request.clear ();
-	    flush();
+	}
+	SocketConnection::reconnect_hook(); // this one schedules for destruction ...
+    }
+
+    void HttppConn::eow_hook (void) {
+if (state != WaitingEOW)
+cout << "[" << id << "]   HttppConn::eow_hook called while not in WaitingEOW state !  state = " << (int) state << endl;
+	if (state == WaitingEOW) {	// JDJDJDJD logging should go here !!!
+	    request.logger();
+	    request.clear ();
+	    state = HTTPRequestLine;
+	    lastbwindex = gettotw();
 	}
     }
 
