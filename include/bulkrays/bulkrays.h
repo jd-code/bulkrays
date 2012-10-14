@@ -211,6 +211,12 @@ static int idnum;
 	    } State;
 	    State state;
 
+	    timeval entering_HTTPRequestLine,
+		    entering_ReadBody,
+		    entering_NowTreatRequest,
+		    entering_WaitingEOW,
+		    ending_WaitingEOW;
+
 	    string mimevalue, mimeheadername;
 	    size_t lastbwindex;
 

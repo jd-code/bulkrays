@@ -1,5 +1,6 @@
 
 bulkrays:
+    possibilité d'avoir un catch-all au niveau de Host: bon pour les embeded server
     passer tt le code en revue pour usage de xmlencode de ttes sorties en html/xml
     logging setw ne marche pas sur tous les champs, a corriger !!!
     percent-decode fields names ????

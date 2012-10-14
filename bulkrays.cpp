@@ -6,6 +6,7 @@
 #include <time.h>
 
 #include <sys/types.h>
+#include <sys/time.h>
 #include <pwd.h>
 #include <grp.h>
 
@@ -411,19 +412,25 @@ namespace bulkrays {
 	gmtime_r(&t, &tm);
 
 //	clog << pdummyconnection->getname() << " " << method << " " << host << req_uri << " " << statuscode << " " << msg << endl;
-	(*clog) << pdummyconnection->getname()
-	     << " - - "	    // JDJDJDJD here stuff about authentication
-	     << "[" << setfill('0') << setw(2)
-		<< tm.tm_mday << '/'
-		<< tm.tm_mon+1 << '/'
-		<< setw(4) << tm.tm_year + 1900 << ':'
-		<< setw(2) << tm.tm_hour << ':'
-		<< tm.tm_min << ':'
-		<< tm.tm_sec << "] \""
-	     << method << " " << host << req_uri << " " << version << "\" "
-	     << statuscode << " "
-	     << (int)(pdummyconnection->gettotw() - pdummyconnection->lastbwindex)
-	     << " ";
+	(*clog) 
+	    << millidiff (pdummyconnection->entering_ReadBody,		pdummyconnection->entering_HTTPRequestLine) << " "
+	    << millidiff (pdummyconnection->entering_NowTreatRequest,	pdummyconnection->entering_ReadBody) << " "
+	    << millidiff (pdummyconnection->entering_WaitingEOW,	pdummyconnection->entering_NowTreatRequest) << " "
+	    << millidiff (pdummyconnection->ending_WaitingEOW,		pdummyconnection->entering_WaitingEOW) << " "
+	    
+	    << pdummyconnection->getname()
+	    << " - - "	    // JDJDJDJD here stuff about authentication
+	    << "[" << setfill('0') << setw(2)
+	       << tm.tm_mday << '/'
+	       << tm.tm_mon+1 << '/'
+	       << setw(4) << tm.tm_year + 1900 << ':'
+	       << setw(2) << tm.tm_hour << ':'
+	       << tm.tm_min << ':'
+	       << tm.tm_sec << "] \""
+	    << method << " " << host << req_uri << " " << version << "\" "
+	    << statuscode << " "
+	    << (int)(pdummyconnection->gettotw() - pdummyconnection->lastbwindex)
+	    << " ";
 
 	MimeHeader::iterator mi = mime.find("Referer");
 
@@ -700,6 +707,7 @@ cout << "[" << id << "]   lastbwindex = " << lastbwindex << " shouldn't it be 0 
 cout << "[" << id << "] some garbage while waiting eow : {" << bufin << "}" << endl;
 		break;
 	    case HTTPRequestLine:
+		gettimeofday(&entering_HTTPRequestLine, NULL);
 		p = bufin.find (' ');
 		if (p == string::npos) {
 		    request.method = bufin; // JDJDJDJD unused ????
@@ -742,8 +750,11 @@ cout << "[" << id << "] version = " << request.version << endl;
 		    compute_reqbodylen ();
 		    if (request.reqbodylen > 0) {
 			state = ReadBody;
+			gettimeofday(&entering_ReadBody, NULL);
 			setrawmode();
 		    } else {
+			gettimeofday(&entering_ReadBody, NULL);
+			gettimeofday(&entering_NowTreatRequest, NULL);
 			state = NowTreatRequest;
 		    }
 cout << "[" << id << "]   "<< endl
@@ -766,9 +777,12 @@ cout << "[" << id << "]   "<< endl
 		    }
 		    compute_reqbodylen ();
 		    if (request.reqbodylen > 0) {
+			gettimeofday(&entering_ReadBody, NULL);
 			state = ReadBody;
 			setrawmode();
 		    } else {
+			gettimeofday(&entering_ReadBody, NULL);
+			gettimeofday(&entering_NowTreatRequest, NULL);
 			state = NowTreatRequest;
 		    }
 cout << "[" << id << "]   "<< endl
@@ -979,6 +993,7 @@ cout << "we've a form post !" << endl;
 			flushandclose();
 			break;
 		    }
+		    gettimeofday(&entering_NowTreatRequest, NULL);
 		    state = NowTreatRequest;
 		    setlinemode();
 		    break;
@@ -1029,7 +1044,7 @@ cout << "[" << id << "]   "<< endl
 		return;
 	    }
 	    treatrequest->output ((*out), request);
-	    // state = HTTPRequestLine;
+	    gettimeofday(&entering_WaitingEOW, NULL);
 	    state = WaitingEOW;
 	    flush();
 	}
@@ -1037,6 +1052,7 @@ cout << "[" << id << "]   "<< endl
 
     void HttppConn::reconnect_hook (void) {
 	if (state == WaitingEOW) {  // probably a shortened transmission !
+	    gettimeofday(&ending_WaitingEOW, NULL);
 	    request.statuscode = 999;	    // JDJDJDJD don't really know what to do here 
 	    request.logger();
 	    request.clear ();
@@ -1048,6 +1064,7 @@ cout << "[" << id << "]   "<< endl
 if (state != WaitingEOW)
 cout << "[" << id << "]   HttppConn::eow_hook called while not in WaitingEOW state !  state = " << (int) state << endl;
 	if (state == WaitingEOW) {	// JDJDJDJD logging should go here !!!
+	    gettimeofday(&ending_WaitingEOW, NULL);
 	    request.logger();
 	    request.clear ();
 	    state = HTTPRequestLine;
