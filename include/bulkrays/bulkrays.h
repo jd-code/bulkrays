@@ -88,8 +88,7 @@ namespace bulkrays {
 
 static ostream * clog;
 
-	    void logger (const string &msg);
-	    void logger (const char *msg = NULL);
+	    void logger (void);
 
 	    void set_relative_expires (time_t seconds);
 	    void set_relative_expires_jitter (size_t seconds, float jitter = 7.0);

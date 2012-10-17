@@ -96,7 +96,6 @@ cerr << "req.document_uri = " << req.document_uri << endl;
 		if (strncmp (canonfname, rootdir.c_str(), rootdirlength) != 0) {
 		    stringstream err;
 		    err << "simplefmap : FMap_TreatRequest::output : file " << canonfname << " fells outside of rootdir : " << rootdir;
-		    req.logger (err.str());
 		    req.set_relative_expires (60);
 		    return error (cout, req, 403, NULL, "file permission denied (001b)");
 		}
