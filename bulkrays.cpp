@@ -656,6 +656,7 @@ cerr << "HTTPRequest::publish_header : statuscode [" << statuscode << "] has no 
     }
 
     HttppConn::HttppConn (int fd, struct sockaddr_in const &client_addr) : SocketConnection(fd, client_addr),request(*this) {
+	cork ();
 	id = idnum;
 	idnum ++;
 	state = HTTPRequestLine;
@@ -705,6 +706,7 @@ cout << "[" << id << "]   lastbwindex = " << lastbwindex << " shouldn't it be 0 
 cout << "[" << id << "] some garbage while waiting eow : {" << bufin << "}" << endl;
 		break;
 	    case HTTPRequestLine:
+		cork();
 		gettimeofday(&entering_HTTPRequestLine, NULL);
 		p = bufin.find (' ');
 		if (p == string::npos) {
@@ -1103,6 +1105,7 @@ cout << "[" << id << "]   HttppConn::eow_hook called while not in WaitingEOW or 
 	    state = HTTPRequestLine;
 	    lastbwindex = gettotw();
 	}
+	BufConnection::eow_hook();	// JDJDJDJD not very good, should be called internally
     }
 
     ostream * HTTPRequest::clog = &cerr;
@@ -1217,7 +1220,7 @@ int main (int nb, char ** cmde) {
     
     struct timeval timeout;
     timeout.tv_sec = 0;
-    timeout.tv_usec = 10000;
+    timeout.tv_usec = 1000;
 
     status_message_globalinit ();
     bootstrap_global ();
