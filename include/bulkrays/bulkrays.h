@@ -19,6 +19,10 @@ namespace bulkrays {
     string xmlencode (const string &s);
     void xmlencode (ostream & cout, const string &s);
 
+    inline ostream& endl (ostream& out) {
+	return out << (char) 13 << (char) 10;
+    }
+
     class MimeTypes : protected map<string, string> {
 	public:
 	    MimeTypes () {}
