@@ -105,7 +105,15 @@ namespace qiconn
 	{   int yes = 1;
 	    if (setsockopt (s, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof (yes)) != 0) {
 		int e = errno;
-		cerr << "could not setsockopt (for listenning connections " << addr << ":" << port << ") : " << strerror (e) << endl ;
+		cerr << "could not setsockopt SO_REUSEADDR (for listenning connections " << addr << ":" << port << ") : " << strerror (e) << endl ;
+		return -1;
+	    }
+	}
+
+	{   int yes = 1;
+	    if (setsockopt (s, SOL_TCP, TCP_DEFER_ACCEPT, &yes, sizeof (yes)) != 0) {
+		int e = errno;
+		cerr << "could not setsockopt TCP_DEFER_ACCEPT (for listenning connections " << addr << ":" << port << ") : " << strerror (e) << endl ;
 		return -1;
 	    }
 	}
@@ -803,7 +811,6 @@ cout << "fd[" << fd << "] >> uncorking" << endl;
     }
 
     void BufConnection::cork (void) {
-#ifdef CORKING
 	if (corking && issocket) {
 cout << "fd[" << fd << "] || corking" << endl;
 	    int flag = 1;		// JDJDJDJD uncork
@@ -812,7 +819,6 @@ cout << "fd[" << fd << "] || corking" << endl;
 	        cerr << "could not setsockopt TCP_CORK=1 (for bufconnections " << fd << ") : " << strerror (e) << endl ;
 	    }
 	}
-#endif
     }
 
     void BufConnection::flushandclose(void) {
