@@ -655,6 +655,7 @@ cerr << "HTTPRequest::publish_header : statuscode [" << statuscode << "] has no 
     }
 
     HttppConn::HttppConn (int fd, struct sockaddr_in const &client_addr) : SocketConnection(fd, client_addr),request(*this) {
+	corking = true;
 	cork ();
 	id = idnum;
 	idnum ++;
@@ -875,7 +876,7 @@ cout << "[" << id << "]   "<< endl
 			string name;
 			string lcr; // the locally supllied in-use crlf string .....
 			size_t lcrs = 0; // the size of lcr
-			size_t lastboundary, currboundary = 0;
+			size_t lastboundary = 0, currboundary = 0;
 			bool wehaveasmallfield = false;
 			bool wehaveencontententry = false;
 			FieldsMap mpentrymime;
