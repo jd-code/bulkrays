@@ -19,7 +19,7 @@ namespace bulkrays {
     string xmlencode (const string &s);
     void xmlencode (ostream & cout, const string &s);
 
-    inline ostream& endl (ostream& out) {
+    inline ostream& bendl (ostream& out) {
 	return out << (char) 13 << (char) 10;
     }
 

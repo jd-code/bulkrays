@@ -516,15 +516,14 @@ cerr << "HTTPRequest::publish_header : statuscode [" << statuscode << "] has no 
 	} else {
 	    outputerror = errormsg;
 	}
-	cout << "HTTP/1.1 " << statuscode << ' ' 
-	     << outputerror << endl
-	     << "Date: " << rfc1123date_offset(buf, 0) << endl;
+	cout << "HTTP/1.1 " << statuscode << ' ' << outputerror << bendl
+	     << "Date: " << rfc1123date_offset(buf, 0) << bendl;
 
 	MimeHeader::iterator mi;
 	for (mi=outmime.begin() ; mi!=outmime.end() ; mi++)
-	    cout << mi->first << ": " << mi->second << endl;
+	    cout << mi->first << ": " << mi->second << bendl;
 
-	cout << endl;
+	cout << bendl;
 	headerpublished = true;
     }
 
@@ -603,29 +602,29 @@ cerr << "HTTPRequest::publish_header : statuscode [" << statuscode << "] has no 
 	}
 	
 	body << xhtml_header;
-	body << "<html>" << endl
-	     << "<head>" << endl
-	     << " <title>" << req.statuscode << " " << req.errormsg << "</title>" << endl
-	     << " <style>" << endl
-	     << "  .bomb64 { background: url(data:image/gif;base64," << bomb64_gif << ")" << endl
-	     << "            top left no-repeat;" << endl
-	     << "            height: 72px; width: 64px; margin 0.1em; float: left;" << endl
-	     << "          }" << endl
-	     << " </style>" << endl
-	     << "</head>" << endl
-	     << "<body>" << endl
-	     << " <h1>" << req.statuscode << " " << req.errormsg << "</h1>" << endl;
+	body << "<html>" << bendl
+	     << "<head>" << bendl
+	     << " <title>" << req.statuscode << " " << req.errormsg << "</title>" << bendl
+	     << " <style>" << bendl
+	     << "  .bomb64 { background: url(data:image/gif;base64," << bomb64_gif << ")" << bendl
+	     << "            top left no-repeat;" << bendl
+	     << "            height: 72px; width: 64px; margin 0.1em; float: left;" << bendl
+	     << "          }" << bendl
+	     << " </style>" << bendl
+	     << "</head>" << bendl
+	     << "<body>" << bendl
+	     << " <h1>" << req.statuscode << " " << req.errormsg << "</h1>" << bendl;
 	if (req.suberrormsg != NULL)
-	     body << "<p>" << req.suberrormsg << "</p>" << endl;
-// << "<img src=\"data:image/gif;base64," << bomb64_gif << "\">" << endl
+	     body << "<p>" << req.suberrormsg << "</p>" << bendl;
+// << "<img src=\"data:image/gif;base64," << bomb64_gif << "\">" << bendl
 	int i;
 	body << "<div>";
 	for (i=0 ; i<req.statuscode/100 ; i++)
 	    body <<" <span class=\"bomb64\"> </span>";
-	body << "</div>" << endl;
+	body << "</div>" << bendl;
 
-	body << " <hr style=\"clear: both;\">" << endl
-	     << "<p>bulkrays http server</p>" << endl
+	body << " <hr style=\"clear: both;\">" << bendl
+	     << "<p>bulkrays http server</p>" << bendl
 	     << "</body>";
 
 	req.outmime ["Content-Type"] = "text/html";
