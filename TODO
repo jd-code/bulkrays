@@ -1,17 +1,19 @@
 
 bulkrays:
+    graceful quit (w or wo connection pending) + flush (logs)
     possibilité d'avoir un catch-all au niveau de Host: bon pour les embeded server
     passer tt le code en revue pour usage de xmlencode de ttes sorties en html/xml
-    logging setw ne marche pas sur tous les champs, a corriger !!!
+    [done] fournir des htmlencode
     percent-decode fields names ????
-    fournir des htmlencode htmldecode
+    fournir htmldecode
+    [done] logging setw ne marche pas sur tous les champs
     [done] manque une methode generique de construction des headers mimes et de la ligne de status
     [done] BUG many errors are logged twice !
-    [done ?] size delivered aren't logged yet ...
+    [done] size delivered aren't logged yet ...
     [done] permit regular simple error emission without closing the connection !
-    %00 in percentdecode ??????
     [done ?] !!! verifier et loguer qu'une req http n'arrive pas avant la fin de transmission des donnees de la precedente
     req_body parsing : utiliser un mode plus strict d'erreurs report
+    %00 in percentdecode ??????
 
 
     versionnisation /vxxx/ obligatoire des elements de composition ?
