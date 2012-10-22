@@ -1,8 +1,0 @@
-
-qiconn:
-    verifier tous les destructeurs des classes heritables virtuellement ....
-    et surtout des classes derivees par virtualisation !
-    valider que l'insertion immediate en reqw vaut la peine (genere un eow inutile ?)
-
-    faire une gestion de queue de suites de buffers a vider en output ... de natures differentes (stream ou mmap voire autre ...
-
