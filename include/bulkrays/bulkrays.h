@@ -16,6 +16,14 @@ namespace bulkrays {
     using namespace std;
     using namespace qiconn;
 
+#ifdef BULKRAYS_H_GLOBINST
+    BULKRAYS_H_SCOPE bool debugparsereq = false;
+    BULKRAYS_H_SCOPE bool debugearlylog = true;
+#else
+    BULKRAYS_H_SCOPE bool debugparsereq;
+    BULKRAYS_H_SCOPE bool debugearlylog;
+#endif
+
     int percentdecode (const string &src, string &result);
     int percentdecodeform (const string &src, string &result);
     string xmlencode (const string &s);

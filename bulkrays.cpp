@@ -506,7 +506,7 @@ static const char* monthname[] = {
 	if (errormsg == NULL) {
 	    map <int,const char *>::iterator mi = status_message.find(statuscode);
 	    if (mi == status_message.end()) {
-errlog() << "HTTPRequest::publish_header : statuscode [" << statuscode << "] has no associated message" << endl;	// JDJDJDJD a typical place where host+uri should be welcomed
+		errlog() << "HTTPRequest::publish_header : statuscode [" << statuscode << "] has no associated message" << endl;
 		outputerror = "Sorry, No Message";
 	    } else {
 		outputerror = mi->second;
@@ -701,7 +701,9 @@ errlog() << "lastbwindex = " << lastbwindex << " shouldn't it be 0 ???" << endl;
 // errlog() << "HttppConn::compute_reqbodylen" << endl;
 	MimeHeader::iterator mi = request.mime.find("Content-Length");
 	if (mi == request.mime.end()) {
-	    errlog() << "MessageBody : no Content-Length header " << bufin << endl;
+	    if (request.method == "PUT") {
+		errlog() << "MessageBody : no Content-Length header " << bufin << endl;
+	    }
 	    request.reqbodylen = 0;
 	    request.readbodybytes = 0;
 	    return;
@@ -716,7 +718,7 @@ errlog() << "lastbwindex = " << lastbwindex << " shouldn't it be 0 ???" << endl;
 
 	switch (state) {
 	    case WaitingEOW:
-		errlog() << "received some stuff before end of transmission occured ?!" << endl;	// JDJDJDJD proper logging is cruelly missing here
+		errlog() << "received some stuff before end of transmission occured ?!" << endl;
 errlog() << "some garbage while waiting eow : {" << bufin << "}" << endl;
 		break;
 	    case HTTPRequestLine:
@@ -736,14 +738,16 @@ errlog() << "some garbage while waiting eow : {" << bufin << "}" << endl;
 		    break;
 		}
 		request.method = bufin.substr (0, p);
-shorterrlog() << "method = " << request.method << endl;
+if (debugparsereq) shorterrlog() << "method = " << request.method << endl;
 		q = p+1, p = bufin.find (' ', q);
 		if (p == string::npos) {
 		    request.req_uri = bufin.substr(q);
 		    populate_reqfields_from_uri (request.req_uri, request.document_uri, request.uri_fields);
-shorterrlog() << "req_uri = " << request.req_uri << endl;
-shorterrlog() << "  "<< endl
-     << ostreamMap(request.uri_fields, "       uri_fields") << endl;
+if (debugparsereq) {
+    shorterrlog() << "req_uri = " << request.req_uri << endl;
+    shorterrlog() << "  "<< endl
+	 << ostreamMap(request.uri_fields, "       uri_fields") << endl;
+}
 		    errlog() << "wrong request line (missing version ?): " << bufin << endl;
 		    request.set_relative_expires (60);
 		    gettimeofday(&entering_ReadBody, NULL);
@@ -756,14 +760,16 @@ shorterrlog() << "  "<< endl
 		}
 		request.req_uri = bufin.substr (q, p-q);
 		populate_reqfields_from_uri (request.req_uri, request.document_uri, request.uri_fields);
-shorterrlog() << "req_uri = " << request.req_uri << endl;
-errlog() << "  "<< endl
-     << ostreamMap(request.uri_fields, "       uri_fields") << endl;
+if (debugparsereq) {
+    shorterrlog() << "req_uri = " << request.req_uri << endl;
+    errlog() << "  "<< endl
+	 << ostreamMap(request.uri_fields, "       uri_fields") << endl;
+}
 		q = p+1, p = bufin.find (' ', q);
 		request.version = bufin.substr(q);
-errlog() << "version = " << request.version << endl;
+if (debugparsereq) errlog() << "version = " << request.version << endl;
 
-errlog() << "tout va bien" << endl;
+if (debugearlylog) errlog() << endl;
 		state = MIMEHeader;
 		mimevalue.clear();		// JDJDJDJD this is rather tricky
 		mimeheadername.clear();		// JDJDJDJD this is rather tricky
@@ -781,8 +787,10 @@ errlog() << "tout va bien" << endl;
 			gettimeofday(&entering_NowTreatRequest, NULL);
 			state = NowTreatRequest;
 		    }
-errlog() << "  "<< endl
-     << ostreamMap(request.mime, "      mime") << endl;
+if (debugparsereq) {
+    errlog() << "  "<< endl
+	 << ostreamMap(request.mime, "      mime") << endl;
+}
 		    break;
 		}
 		if (!isalnum(bufin[0])) {
@@ -813,8 +821,10 @@ errlog() << "  "<< endl
 			gettimeofday(&entering_NowTreatRequest, NULL);
 			state = NowTreatRequest;
 		    }
-errlog() << "  "<< endl
-     << ostreamMap(request.mime, "      mime") << endl;
+if (debugparsereq) {
+    errlog() << "  "<< endl
+	 << ostreamMap(request.mime, "      mime") << endl;
+}
 		    break;
 		}
 		p = 0;
@@ -921,7 +931,7 @@ errlog() << "  "<< endl
 
 			    p = request.req_body.find(boundary, q);
 			    if (p == string::npos) {
-errlog() << "could not find next boundary" << endl;
+				errlog() << "could not find next boundary" << endl;
 				break;
 			    }
 
@@ -940,7 +950,7 @@ errlog() << "could not find next boundary" << endl;
 
 			    q = p+boundary.length();
 			    if (q+1 > l) {
-errlog() << "last boundary too close to the end of body ???" << endl;
+				errlog() << "last boundary too close to the end of body ???" << endl;
 				break;
 			    }
 			    if ((request.req_body[q] == '-') && (request.req_body[q+1] == '-'))	{
@@ -959,13 +969,14 @@ errlog() << "reached closing boundary at " << (l - q) << " bytes from end of bod
 				    errlog() << "at boundarizing the post req_body : could not determine the crlf in use" << endl;
 				    break;
 				}
-{   ostream &cout = errlog();				
-cout << "crlf in use :";
-{   size_t i;
-    for(i=0;i<lcr.size();i++)
-	cout << "[" << (int)lcr[i] << "]";
-}
-cout << endl;
+if (debugparsereq) 
+{   ostream &out = errlog();				
+    out << "crlf in use :";
+    {   size_t i;
+	for(i=0;i<lcr.size();i++)
+	    out << "[" << (int)lcr[i] << "]";
+    }
+    out << endl;
 }
 			    }
 
@@ -1025,7 +1036,7 @@ cout << endl;
 
 
 		    } else if (mi->second == "application/x-www-form-urlencoded") {
-errlog() << "we've a form post !" << endl;
+if (debugparsereq) errlog() << "we've a form post !" << endl;
 			populate_reqfields_from_urlencodebody (request.req_body, request.body_fields);
 		    } else {
 			errlog() << "unhandled request-body' Content-Type : " << mi->second << endl;	// JDJDJDJD this could have been detected earlier, and the connection shut earlier
@@ -1049,16 +1060,19 @@ errlog() << "we've a form post !" << endl;
 	}
 // errlog << "state=" << state << " : request.reqbodylen=" << request.reqbodylen << " request.readbodybytes=" << request.readbodybytes << endl;
 	if (state == NowTreatRequest) {
-
-errlog() << "============================" << endl;
-errlog() << endl
-     << ostreamMap(request.body_fields, "      body_fields") << endl;
+if (debugparsereq) {
+    errlog() << "============================" << endl;
+    errlog() << endl
+	 << ostreamMap(request.body_fields, "      body_fields") << endl;
+}
 
 	    request.req_fields.import(request.uri_fields);
 	    request.req_fields.import(request.body_fields);
-errlog() << endl
-     << request.req_fields << endl
-     << request.content_fields << endl;
+if (debugparsereq) {
+    errlog() << endl
+	 << request.req_fields << endl
+	 << request.content_fields << endl;
+}
 
 	    MimeHeader::iterator mi_host = request.mime.find ("Host");
 	    if (mi_host == request.mime.end()) {

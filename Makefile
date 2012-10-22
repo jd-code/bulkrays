@@ -18,10 +18,10 @@ vimtest: all
 	./bulkrays --bind=127.0.0.1:10080 --user=$$USER --access_log=access_log
 	### ddd --args ./qigong    -pidfile=/tmp/qigongbuild.pid -logfile=testqigong.log -debugout -port 1364 -nofork &
 
-bulkrays: bulkrays.o qiconn/qiconn.o testsite.o bootstrap.o testsite.o simplefmap.o
+bulkrays: bulkrays.o qiconn/qiconn.o testsite.o bootstrap.o testsite.o simplefmap.o include/bulkrays/bulkrays.h
 	g++ ${DEBUG} ${INCLUDES} -Wall -o  bulkrays bulkrays.o qiconn/qiconn.o bootstrap.o testsite.o simplefmap.o
 
-bulkrays.o: bulkrays.cpp include/bulkrays/bulkrays.h
+bulkrays.o: bulkrays.cpp include/bulkrays/bulkrays.h qiconn/include/qiconn/qiconn.h
 	g++ ${DEBUG} ${INCLUDES} -DBULKRAYSVERSION="\"${VERSION}\"" -Wall -c bulkrays.cpp
 
 
