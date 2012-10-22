@@ -184,7 +184,7 @@ namespace bulkrays {
 	    string ident = body.substr (p, q-p);
 // cerr << "------------" << ident << endl;
 	    FieldsMap::iterator mi = reqfields.find (ident);
-	    if (mi != reqfields.end()) {
+	    if (mi != reqfields.end()) {	// JDJDJDJD if it was a member function we could populate the error message
 		cerr << "populate_reqfields_from_urlencodebody : field[" << ident << "] repopulated !" << endl;
 		nberror ++;
 	    }
@@ -355,7 +355,6 @@ namespace bulkrays {
 	    if ((p<l) && (p == '#'))	// have-we a comment line ?
 		continue;
 
-//cerr << line << endl;
 	    string mime_type;
 	    while ((p<l) && (!isspace(line[p])))
 		mime_type += line[p++];
@@ -372,7 +371,6 @@ namespace bulkrays {
 
 		if (! (term.empty() || mime_type.empty())) {
 		    (*this)[term] = mime_type;
-//cerr << term << " = " << mime_type << endl;
 		}
 	    }
 	    
@@ -498,7 +496,7 @@ static const char* monthname[] = {
 
     void HTTPRequest::publish_header (void) {
 	if (headerpublished) {
-	    cerr << "HTTPRequest::publish_header : header already published !!!" << endl;
+	    errlog() << "HTTPRequest::publish_header : header already published !!!" << endl;
 	    return;
 	}
 	char buf[40];
@@ -508,7 +506,7 @@ static const char* monthname[] = {
 	if (errormsg == NULL) {
 	    map <int,const char *>::iterator mi = status_message.find(statuscode);
 	    if (mi == status_message.end()) {
-cerr << "HTTPRequest::publish_header : statuscode [" << statuscode << "] has no associated message" << endl;	// JDJDJDJD a typical place where host+uri should be welcomed
+errlog() << "HTTPRequest::publish_header : statuscode [" << statuscode << "] has no associated message" << endl;	// JDJDJDJD a typical place where host+uri should be welcomed
 		outputerror = "Sorry, No Message";
 	    } else {
 		outputerror = mi->second;
@@ -594,7 +592,7 @@ cerr << "HTTPRequest::publish_header : statuscode [" << statuscode << "] has no 
 
 	    map <int,const char *>::iterator mi = status_message.find (req.statuscode);
 	    if (mi == status_message.end()) {
-		cerr << "ReturnError::output : wrong internal error code : " << req.statuscode << endl;
+		req.errlog() << "ReturnError::output : wrong internal error code : " << req.statuscode << endl;
 		req.statuscode = 500;
 		mi = status_message.find (req.statuscode);
 	    }
@@ -662,7 +660,7 @@ cerr << "HTTPRequest::publish_header : statuscode [" << statuscode << "] has no 
 	state = HTTPRequestLine;
 	lastbwindex = gettotw();
 if (lastbwindex != 0)
-cout << "[" << id << "]   lastbwindex = " << lastbwindex << " shouldn't it be 0 ???" << endl;
+errlog() << "lastbwindex = " << lastbwindex << " shouldn't it be 0 ???" << endl;
     }
     HttppConn::~HttppConn (void) {
 	// nothing to do there yet
@@ -683,11 +681,27 @@ cout << "[" << id << "]   lastbwindex = " << lastbwindex << " shouldn't it be 0 
 // [0]Connection: close
 // [0]
 
+    ostream& HttppConn::shorterrlog (void) {
+	return cerr << "[" << fd << " : " << id << " : " << name << "] ";
+    }
+
+    ostream& HttppConn::errlog (void) {
+	return shorterrlog()
+	    << request.method << " ("
+	    << request.host << ") "
+	    << request.document_uri
+	    << " ";
+    }
+
+    ostream& HTTPRequest::errlog (void) {
+	return pdummyconnection->errlog();
+    }
+
     void HttppConn::compute_reqbodylen (void) {
-// cout << "HttppConn::compute_reqbodylen" << endl;
+// errlog() << "HttppConn::compute_reqbodylen" << endl;
 	MimeHeader::iterator mi = request.mime.find("Content-Length");
 	if (mi == request.mime.end()) {
-	    cout << "[" << id << "] MessageBody : no Content-Length header " << bufin << endl;
+	    errlog() << "MessageBody : no Content-Length header " << bufin << endl;
 	    request.reqbodylen = 0;
 	    request.readbodybytes = 0;
 	    return;
@@ -702,8 +716,8 @@ cout << "[" << id << "]   lastbwindex = " << lastbwindex << " shouldn't it be 0 
 
 	switch (state) {
 	    case WaitingEOW:
-		cerr << "received some stuff before end of transmission occured ?!" << endl;	// JDJDJDJD proper logging is cruelly missing here
-cout << "[" << id << "] some garbage while waiting eow : {" << bufin << "}" << endl;
+		errlog() << "received some stuff before end of transmission occured ?!" << endl;	// JDJDJDJD proper logging is cruelly missing here
+errlog() << "some garbage while waiting eow : {" << bufin << "}" << endl;
 		break;
 	    case HTTPRequestLine:
 		cork();
@@ -711,7 +725,7 @@ cout << "[" << id << "] some garbage while waiting eow : {" << bufin << "}" << e
 		p = bufin.find (' ');
 		if (p == string::npos) {
 		    request.method = bufin; // JDJDJDJD unused ????
-		    cerr << "wrong request line (method only ?): " << bufin << endl;
+		    errlog() << "wrong request line (method only ?): " << bufin << endl;
 		    request.set_relative_expires (60);
 		    gettimeofday(&entering_ReadBody, NULL);
 		    gettimeofday(&entering_NowTreatRequest, NULL);
@@ -722,15 +736,15 @@ cout << "[" << id << "] some garbage while waiting eow : {" << bufin << "}" << e
 		    break;
 		}
 		request.method = bufin.substr (0, p);
-cout << "[" << id << "] method = " << request.method << endl;
+shorterrlog() << "method = " << request.method << endl;
 		q = p+1, p = bufin.find (' ', q);
 		if (p == string::npos) {
 		    request.req_uri = bufin.substr(q);
 		    populate_reqfields_from_uri (request.req_uri, request.document_uri, request.uri_fields);
-cout << "[" << id << "] req_uri = " << request.req_uri << endl;
-cout << "[" << id << "]   "<< endl
+shorterrlog() << "req_uri = " << request.req_uri << endl;
+shorterrlog() << "  "<< endl
      << ostreamMap(request.uri_fields, "       uri_fields") << endl;
-		    cerr << "wrong request line (missing version ?): " << bufin << endl;
+		    errlog() << "wrong request line (missing version ?): " << bufin << endl;
 		    request.set_relative_expires (60);
 		    gettimeofday(&entering_ReadBody, NULL);
 		    gettimeofday(&entering_NowTreatRequest, NULL);
@@ -742,12 +756,14 @@ cout << "[" << id << "]   "<< endl
 		}
 		request.req_uri = bufin.substr (q, p-q);
 		populate_reqfields_from_uri (request.req_uri, request.document_uri, request.uri_fields);
-cout << "[" << id << "] req_uri = " << request.req_uri << endl;
-cout << "[" << id << "]   "<< endl
+shorterrlog() << "req_uri = " << request.req_uri << endl;
+errlog() << "  "<< endl
      << ostreamMap(request.uri_fields, "       uri_fields") << endl;
 		q = p+1, p = bufin.find (' ', q);
 		request.version = bufin.substr(q);
-cout << "[" << id << "] version = " << request.version << endl;
+errlog() << "version = " << request.version << endl;
+
+errlog() << "tout va bien" << endl;
 		state = MIMEHeader;
 		mimevalue.clear();		// JDJDJDJD this is rather tricky
 		mimeheadername.clear();		// JDJDJDJD this is rather tricky
@@ -765,12 +781,12 @@ cout << "[" << id << "] version = " << request.version << endl;
 			gettimeofday(&entering_NowTreatRequest, NULL);
 			state = NowTreatRequest;
 		    }
-cout << "[" << id << "]   "<< endl
+errlog() << "  "<< endl
      << ostreamMap(request.mime, "      mime") << endl;
 		    break;
 		}
 		if (!isalnum(bufin[0])) {
-		    cerr << "wrong mime header-name (bad starting char ?) : " << bufin << endl;
+		    errlog() << "wrong mime header-name (bad starting char ?) : " << bufin << endl;
 		    request.set_relative_expires (0);   // this isn't cachable, the uri may be identical and mimes differents
 		    gettimeofday(&entering_ReadBody, NULL);
 		    gettimeofday(&entering_NowTreatRequest, NULL);
@@ -785,7 +801,7 @@ cout << "[" << id << "]   "<< endl
 		if (len == 0) {
 		    if (!mimeheadername.empty()) {
 			request.mime[mimeheadername] = mimevalue;   // JDJDJDJD should check for pre-existing mime entry
-// cout << mimeheadername << " = " << mimevalue << endl;
+// errlog() << mimeheadername << " = " << mimevalue << endl;
 		    }
 		    compute_reqbodylen ();
 		    if (request.reqbodylen > 0) {
@@ -797,7 +813,7 @@ cout << "[" << id << "]   "<< endl
 			gettimeofday(&entering_NowTreatRequest, NULL);
 			state = NowTreatRequest;
 		    }
-cout << "[" << id << "]   "<< endl
+errlog() << "  "<< endl
      << ostreamMap(request.mime, "      mime") << endl;
 		    break;
 		}
@@ -809,7 +825,7 @@ cout << "[" << id << "]   "<< endl
 			mimevalue += bufin[p++];
 		
 		    request.mime[mimeheadername] = mimevalue;	// JDJDJDJD should check for pre-existing mime entry
-// cout << mimeheadername << " = " << mimevalue << endl;
+// errlog() << mimeheadername << " = " << mimevalue << endl;
 		    mimevalue.clear();
 		    mimeheadername.clear();
 		    state = NextMIMEHeader;
@@ -817,11 +833,11 @@ cout << "[" << id << "]   "<< endl
 		}
 		if (!mimeheadername.empty()) {
 		    request.mime[mimeheadername] = mimevalue;   // JDJDJDJD should check for pre-existing mime entry
-// cout << mimeheadername << " = " << mimevalue << endl;
+// errlog() << mimeheadername << " = " << mimevalue << endl;
 		}
 		p = bufin.find (':');
 		if (p == string::npos) {
-		    cerr << "wrong mime header-name (missing ':' ?) : " << bufin << endl;
+		    errlog() << "wrong mime header-name (missing ':' ?) : " << bufin << endl;
 		    request.set_relative_expires (0);   // this isn't cachable, the uri may be identical and mimes differents
 		    gettimeofday(&entering_ReadBody, NULL);
 		    gettimeofday(&entering_NowTreatRequest, NULL);
@@ -832,7 +848,7 @@ cout << "[" << id << "]   "<< endl
 		    break;
 		}
 		if (!isalnum(bufin[0])) {
-		    cerr << "wrong mime header-name (bad starting char ?) : " << bufin << endl;
+		    errlog() << "wrong mime header-name (bad starting char ?) : " << bufin << endl;
 		    request.set_relative_expires (0);   // this isn't cachable, the uri may be identical and mimes differents
 		    gettimeofday(&entering_ReadBody, NULL);
 		    gettimeofday(&entering_NowTreatRequest, NULL);
@@ -857,10 +873,10 @@ cout << "[" << id << "]   "<< endl
 		request.req_body += bufin;
 		request.readbodybytes += bufin.size();
 		if (request.readbodybytes >= request.reqbodylen) {
-		    cout << "[" << id << "] ReadBody : " << request.readbodybytes << " read, " << request.reqbodylen << " schedulled.  diff = " << request.readbodybytes-request.reqbodylen << endl;
+		    errlog() << "ReadBody : " << request.readbodybytes << " read, " << request.reqbodylen << " schedulled.  diff = " << request.readbodybytes-request.reqbodylen << endl;
 		    mi = request.mime.find ("Content-Type");
 		    if (mi == request.mime.end()) {
-			cerr << "missing Content-Type with non-empty request body" << endl;	// JDJDJDJD this could have been detected earlier, and the connection shut earlier
+			errlog() << "missing Content-Type with non-empty request body" << endl;	// JDJDJDJD this could have been detected earlier, and the connection shut earlier
 			request.set_relative_expires (0);   // this isn't cachable, the uri may be identical and mimes differents
 			gettimeofday(&entering_NowTreatRequest, NULL);
 			returnerror.shortcuterror ((*out), request, 400, NULL, "missing Content-Type for request body");
@@ -870,7 +886,7 @@ cout << "[" << id << "]   "<< endl
 			break;
 		    }
 		    if (mi->second.substr(0,20) == "multipart/form-data;") {
-// cout << "we're about to deal with a multipart/form-data" << endl;
+// errlog() << "we're about to deal with a multipart/form-data" << endl;
 
 			bool weseekthefirstboundary = true;
 			string name;
@@ -884,7 +900,7 @@ cout << "[" << id << "]   "<< endl
 
 			size_t p = mi->second.find ("boundary=");
 			if (p == string::npos) {
-			    cerr << "no boundary given in a multipart/form-data : Content-Type: " << mi->second << endl;
+			    errlog() << "no boundary given in a multipart/form-data : Content-Type: " << mi->second << endl;
 			    request.set_relative_expires (0);   // this isn't cachable, the uri may be identical and mimes differents
 			    gettimeofday(&entering_NowTreatRequest, NULL);
 			    returnerror.shortcuterror ((*out), request, 400, NULL, "missing boundary definition in multipart/form-data");
@@ -895,7 +911,7 @@ cout << "[" << id << "]   "<< endl
 			}
 			string boundary ("--");
 			boundary += mi->second.substr(p+9);
-// cout << "boundary = " << boundary << endl;
+// errlog() << "boundary = " << boundary << endl;
 
 			p = 0;
 			size_t	q = p,
@@ -905,7 +921,7 @@ cout << "[" << id << "]   "<< endl
 
 			    p = request.req_body.find(boundary, q);
 			    if (p == string::npos) {
-cout << "could not find next boundary" << endl;
+errlog() << "could not find next boundary" << endl;
 				break;
 			    }
 
@@ -924,13 +940,13 @@ cout << "could not find next boundary" << endl;
 
 			    q = p+boundary.length();
 			    if (q+1 > l) {
-cout << "last boundary too close to the end of body ???" << endl;
+errlog() << "last boundary too close to the end of body ???" << endl;
 				break;
 			    }
 			    if ((request.req_body[q] == '-') && (request.req_body[q+1] == '-'))	{
 				q += 2;
 if (l-q != 2)
-cout << "reached closing boundary at " << (l - q) << " bytes from end of body" << endl;
+errlog() << "reached closing boundary at " << (l - q) << " bytes from end of body" << endl;
 				break;
 			    }
 			    p = q;
@@ -940,21 +956,22 @@ cout << "reached closing boundary at " << (l - q) << " bytes from end of body" <
 				lcr = fetch_localcr (request.req_body, p);
 				lcrs = lcr.size();
 				if (lcrs == 0) {
-				    cerr << "at boundarizing the post req_body : could not determine the crlf in use" << endl;
+				    errlog() << "at boundarizing the post req_body : could not determine the crlf in use" << endl;
 				    break;
 				}
-				
-// cout << "crlf in use :";
-// {   size_t i;
-//     for(i=0;i<lcr.size();i++)
-// 	cout << "[" << (int)lcr[i] << "]";
-// }
-// cout << endl;
+{   ostream &cout = errlog();				
+cout << "crlf in use :";
+{   size_t i;
+    for(i=0;i<lcr.size();i++)
+	cout << "[" << (int)lcr[i] << "]";
+}
+cout << endl;
+}
 			    }
 
 			    q = request.req_body.find (lcr, p);
 			    if (q == string::npos) {
-				cerr << "at boundarizing the post req_body : could not find begining of multipart-entry mime" << endl;
+				errlog() << "at boundarizing the post req_body : could not find begining of multipart-entry mime" << endl;
 				break;
 			    }
 			    q += lcrs;
@@ -964,28 +981,26 @@ cout << "reached closing boundary at " << (l - q) << " bytes from end of body" <
 
 				read_mimes_in_string (request.req_body, mpentrymime, lcr, q);
 				lastboundary = q;
-// cout << "[" << id << "]   "<< endl
-//      << ostreamMap(mpentrymime, "      pentry[] mime") << endl;
 				FieldsMap::iterator mi = mpentrymime.find ("Content-Disposition");
 				if (mi == mpentrymime.end()) {
-				    cerr << "missing Content-Disposition mime-entry (every boundary should have a Content-Disposition entry)" << endl;
+				    errlog() << "missing Content-Disposition mime-entry (every boundary should have a Content-Disposition entry)" << endl;
 				    continue;
 				}
 				string& cd = mi->second;
 				size_t p = cd.find(';');
 				if (cd.substr(0, p) != "form-data") {
-				    cerr << "wrong Content-Disposition entry, not \"form-data\" ??" << endl;
+				    errlog() << "wrong Content-Disposition entry, not \"form-data\" ??" << endl;
 				    continue;
 				}
 				p = cd.find("name=\"", p);
 				if (p == string::npos) {
-				    cerr << "wrong Content-Disposition entry, missing \"name=\" ??" << endl;
+				    errlog() << "wrong Content-Disposition entry, missing \"name=\" ??" << endl;
 				    continue;
 				}
 				p += 6;
 				size_t q = cd.find ('"', p);
 				if (q == string::npos) {
-				    cerr << "wrong Content-Disposition entry, name=\" is unclosed ??" << endl;
+				    errlog() << "wrong Content-Disposition entry, name=\" is unclosed ??" << endl;
 				    continue;
 				}
 				name = cd.substr(p, q-p);
@@ -1010,10 +1025,10 @@ cout << "reached closing boundary at " << (l - q) << " bytes from end of body" <
 
 
 		    } else if (mi->second == "application/x-www-form-urlencoded") {
-cout << "we've a form post !" << endl;
+errlog() << "we've a form post !" << endl;
 			populate_reqfields_from_urlencodebody (request.req_body, request.body_fields);
 		    } else {
-			cerr << "unhandled request-body' Content-Type : " << mi->second << endl;	// JDJDJDJD this could have been detected earlier, and the connection shut earlier
+			errlog() << "unhandled request-body' Content-Type : " << mi->second << endl;	// JDJDJDJD this could have been detected earlier, and the connection shut earlier
 			request.set_relative_expires (0);   // this isn't cachable, the uri may be identical and mimes differents
 			gettimeofday(&entering_NowTreatRequest, NULL);
 			returnerror.shortcuterror ((*out), request, 415, NULL, "the provided Content-type for request body cannot be handled by server");
@@ -1032,22 +1047,22 @@ cout << "we've a form post !" << endl;
 	    case NowTreatRequest:
 		break;
 	}
-// cout << "state=" << state << " : request.reqbodylen=" << request.reqbodylen << " request.readbodybytes=" << request.readbodybytes << endl;
+// errlog << "state=" << state << " : request.reqbodylen=" << request.reqbodylen << " request.readbodybytes=" << request.readbodybytes << endl;
 	if (state == NowTreatRequest) {
 
-cout << "============================" << endl;
-cout << "[" << id << "]   "<< endl
+errlog() << "============================" << endl;
+errlog() << endl
      << ostreamMap(request.body_fields, "      body_fields") << endl;
 
 	    request.req_fields.import(request.uri_fields);
 	    request.req_fields.import(request.body_fields);
-cout << "[" << id << "]   "<< endl
+errlog() << endl
      << request.req_fields << endl
      << request.content_fields << endl;
 
 	    MimeHeader::iterator mi_host = request.mime.find ("Host");
 	    if (mi_host == request.mime.end()) {
-		cerr << "missing Host mime entry" << endl;
+		errlog() << "missing Host mime entry" << endl;
 		request.set_relative_expires (60);
 		returnerror.shortcuterror ((*out), request, 503, NULL, "missing Host mime entry");  // JDJDJDJD we should have a default host
 								    // JDJDJDJD we should be able to tune the error message (Unknown virtual host.)
@@ -1059,7 +1074,7 @@ cout << "[" << id << "]   "<< endl
 	    request.host = mi_host->second;
 	    THostMapper::iterator mi = hostmapper.find (request.host);
 	    if (mi == hostmapper.end()) {
-		cerr << "unhandled Host :" << request.host << endl;
+		errlog() << "unhandled Host :" << request.host << endl;
 		request.set_relative_expires (60);
 		returnerror.shortcuterror ((*out), request, 404, "Unkown Virtual Host");  // JDJDJDJD we should have a default host
 								    // JDJDJDJD we should be able to tune the error message (Unknown virtual host.)
@@ -1070,7 +1085,7 @@ cout << "[" << id << "]   "<< endl
 	    }
 	    TreatRequest* treatrequest = mi->second->treatrequest (request);
 	    if (treatrequest == NULL) {
-		cerr << "NULL treatrequest from hostmapper for Host " << request.host << endl;
+		errlog() << "NULL treatrequest from hostmapper for Host " << request.host << endl;
 		request.set_relative_expires (60);
 		returnerror.shortcuterror ((*out), request, 404, NULL, "No Handler for URI");  // JDJDJDJD we should be able to tune the err
 		gettimeofday(&entering_WaitingEOW, NULL);
@@ -1097,7 +1112,7 @@ cout << "[" << id << "]   "<< endl
 
     void HttppConn::eow_hook (void) {
 if ((state != WaitingEOW) && (state != HTTPRequestLine))
-cout << "[" << id << "]   HttppConn::eow_hook called while not in WaitingEOW or HTTPRequestLine state !  state = " << (int) state << endl;
+errlog() << "HttppConn::eow_hook called while not in WaitingEOW or HTTPRequestLine state !  state = " << (int) state << endl;
 	if (state == WaitingEOW) {	// JDJDJDJD logging should go here !!!
 	    gettimeofday(&ending_WaitingEOW, NULL);
 	    request.logger();

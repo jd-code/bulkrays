@@ -1,6 +1,8 @@
 #ifndef INCL_BULKRAYS_H
 #define INCL_BULKRAYS_H
 
+#include <iomanip>
+
 #ifdef BULKRAYS_H_GLOBINST
 #define BULKRAYS_H_SCOPE
 #else
@@ -93,6 +95,8 @@ namespace bulkrays {
 static ostream * clog;
 
 	    void logger (void);
+
+	    ostream& errlog (void);
 
 	    void set_relative_expires (time_t seconds);
 	    void set_relative_expires_jitter (size_t seconds, float jitter = 7.0);
@@ -227,6 +231,8 @@ static int idnum;
 	    int id;
 
 	    void compute_reqbodylen (void);
+	    ostream& shorterrlog (void);
+	    ostream& errlog (void);
 
 	    virtual ~HttppConn (void);
 	    HttppConn (int fd, struct sockaddr_in const &client_addr);
