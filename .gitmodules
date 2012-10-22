@@ -1,0 +1,3 @@
+[submodule "qiconn"]
+	path = qiconn
+	url = gitosis@brugmansia.nekodune.net:qiconn.git
