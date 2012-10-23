@@ -1169,7 +1169,11 @@ int main (int nb, char ** cmde) {
 		if (p>0)
 		    address = scheme.substr(0,p);
 	    }
-	    cerr << "will try to bind : " << address << ":" << port << endl;
+	    // cerr << "will try to bind : " << address << ":" << port << endl;
+	} else if (strncmp (cmde[i], "--earlylog", 10) == 0) {
+	    debugearlylog = true;
+	} else if (strncmp (cmde[i], "--debugparsereq", 15) == 0) {
+	    debugparsereq = true;
 	} else if (strncmp (cmde[i], "--access_log=", 13) == 0) {
 	    if (*(cmde[i]+13) != 0) {
 		flogname = cmde[i]+13;

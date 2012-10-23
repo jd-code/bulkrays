@@ -18,7 +18,7 @@ namespace bulkrays {
 
 #ifdef BULKRAYS_H_GLOBINST
     BULKRAYS_H_SCOPE bool debugparsereq = false;
-    BULKRAYS_H_SCOPE bool debugearlylog = true;
+    BULKRAYS_H_SCOPE bool debugearlylog = false;
 #else
     BULKRAYS_H_SCOPE bool debugparsereq;
     BULKRAYS_H_SCOPE bool debugearlylog;
