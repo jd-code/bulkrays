@@ -19,6 +19,83 @@ namespace simplefmap {
     using namespace std;
     using namespace bulkrays;
 
+    // some goodies in order to quickly output a full date : cout << os_time_t (mytime_t_var) << ....
+
+    struct ostream_time_t { time_t f_param; };
+
+    inline ostream_time_t
+    os_time_t(time_t param)
+    { 
+	ostream_time_t funct_struct; 
+	funct_struct.f_param = param; 
+	return funct_struct; 
+    }
+
+    template<typename _CharT, typename _Traits>
+    inline basic_ostream<_CharT,_Traits>& 
+    operator<<(basic_ostream<_CharT,_Traits>& out, ostream_time_t f_struct)
+    { 
+	time_t t = f_struct.f_param;
+	struct tm tt;
+	localtime_r (&t, &tt);
+
+	return out << setfill('0')
+	    << setw(4) << tt.tm_year+1900 << "/"
+	    << setw(2) << tt.tm_mon+1 << "/"
+	    << setw(2) << tt.tm_mday << " "
+	    << setw(2) << tt.tm_hour << ":"
+	    << setw(2) << tt.tm_min << ":"
+	    << setw(2) << tt.tm_sec;
+    }
+
+
+//    ostream& operator<< (ostream& out, const time_t &t) {
+//	struct tm tt;
+//	localtime_r (&t, &tt);
+//
+//	return out << setfill('0')
+//	    << setw(4) << tt.tm_year+1900 << "-"
+//	    << setw(2) << tt.tm_mon+1 << "-"
+//	    << setw(2) << tt.tm_mday << " "
+//	    << setw(2) << tt.tm_hour << ":"
+//	    << setw(2) << tt.tm_min << ":"
+//	    << setw(2) << tt.tm_sec;
+//    }
+
+    class direntry {
+	public:
+	    string name;
+	    bool isvalid;
+	    off_t size;
+	    time_t mtime, ctime;
+	    bool isdir;
+	    direntry (const string &curdir, struct dirent const& d) : name (d.d_name) {
+		struct stat bstat;
+		string fname(curdir);
+		fname += "/";
+		fname += name;
+		if (stat (fname.c_str(), &bstat) != 0) {
+		    isvalid = false;
+		    size = 0, mtime = 0, ctime = 0;
+		    isdir = false;
+		    return;
+		}
+		isvalid = true;
+		size = bstat.st_size;
+		mtime = bstat.st_mtime;
+		ctime = bstat.st_ctime;
+		isdir = (d.d_type == DT_DIR);
+	    }
+    };
+
+    ostream& operator<< (ostream& out, const direntry &de) {	// JDJDJDJD some css tagging is missing here
+	out << "<a href=\"" << de.name;
+	if (de.isdir)
+	    out << '/';
+	out << "\">" << de.name << "</a> " << (int)de.size << " " << os_time_t (de.mtime) << " " << os_time_t (de.ctime);
+	return out;
+    }
+
 
     class MMapBuffer : virtual public DummyBuffer {
 	private:
@@ -63,7 +140,7 @@ namespace simplefmap {
 	    if (req.document_uri == "/")
 		isrootdir = true;
 
-cerr << "req.document_uri = " << req.document_uri << endl;
+// cerr << "req.document_uri = " << req.document_uri << endl;
 
 	    fname += req.document_uri;
 	    char * canonfname = realpath (fname.c_str(), NULL);
@@ -86,7 +163,7 @@ cerr << "req.document_uri = " << req.document_uri << endl;
 		    case EINVAL:
 		    case EIO:
 		    default:
-			cerr << "simplefmap::output realpath gave error " << e << " " << strerror (e) << endl;  // JDJDJDJD we should have an uniform way to log such things
+			req.errlog() << "simplefmap::output realpath gave error " << e << " " << strerror (e) << endl;
 			req.set_relative_expires (60);
 			return error (cout, req, 500);
 		}
@@ -104,7 +181,7 @@ cerr << "req.document_uri = " << req.document_uri << endl;
 	    struct stat statbuf;
 	    if (lstat (canonfname, &statbuf) != 0) {
 		int e = errno;
-cerr << "simplefmap::output lstat(" << canonfname << ") gave error " << e << " " << strerror (e) << endl;  // this is debug JDJDJDJD we should have an uniform way to log such things
+req.errlog() << "simplefmap::output lstat(" << canonfname << ") gave error " << e << " " << strerror (e) << endl;  // this is debug JDJDJDJD we should have an uniform way to log such things
                 switch (e) {
 		    case EACCES:
 			req.set_relative_expires (60);
@@ -122,7 +199,7 @@ cerr << "simplefmap::output lstat(" << canonfname << ") gave error " << e << " "
 		    case EINVAL:
 		    case EIO:
 		    default:
-			cerr << "simplefmap::output lstat(" << canonfname << ") gave error " << e << " " << strerror (e) << endl;  // this is debug JDJDJDJD we should have an uniform way to log such things
+			req.errlog() << "simplefmap::output lstat(" << canonfname << ") gave error " << e << " " << strerror (e) << endl;
 			req.set_relative_expires (60);
 			return error (cout, req, 500);
 		}
@@ -137,7 +214,7 @@ cerr << "simplefmap::output lstat(" << canonfname << ") gave error " << e << " "
 
 		if (fdir == NULL) {
 		    int e = errno;
-cerr << "simplefmap::output opendir(" << canonfname << " ) gave error " << e << " " << strerror (e) << endl;  // this is debug JDJDJDJD we should have an uniform way to log such things
+req.errlog() << "simplefmap::output opendir(" << canonfname << " ) gave error " << e << " " << strerror (e) << endl;  // this is debug JDJDJDJD we should have an uniform way to log such things
 		    switch (e) {
 			case EACCES:
 			    req.set_relative_expires (60);
@@ -156,12 +233,12 @@ cerr << "simplefmap::output opendir(" << canonfname << " ) gave error " << e << 
 		size_t dirent_len = offsetof(struct dirent, d_name) + pathconf(canonfname, _PC_NAME_MAX) + 1;
 		struct dirent *entryp = (struct dirent *) malloc(dirent_len);
 		if (entryp == NULL) {
-cerr << "simplefmap::output could not alloc struct dirent * (size = " << (int)dirent_len << ")" << endl;
+		    req.errlog() << "simplefmap::output could not alloc struct dirent * (size = " << (int)dirent_len << ")" << endl;
 		    req.set_relative_expires (60);
 		    return error (cout, req, 503, NULL, "weidries occured (002)");
 		}
 
-	map <string, string> thedir;
+	list <direntry> thedir;
 
 		while (true) {
 		    struct dirent *presult;
@@ -171,14 +248,16 @@ cerr << "simplefmap::output could not alloc struct dirent * (size = " << (int)di
 		    if (presult == NULL)
 			break;
 
-		    struct dirent &entry = *presult;
+		    thedir.push_back (direntry(canonfname, *presult));
 
-		    if (entry.d_type == DT_DIR) {
-			string name(entry.d_name);
-			name += '/';
-			thedir [name] = "";
-		    } else
-			thedir [entry.d_name] = "";
+//		    struct dirent &entry = *presult;
+//
+//		    if (entry.d_type == DT_DIR) {
+//			string name(entry.d_name);
+//			name += '/';
+//			thedir [name] = "";
+//		    } else
+//			thedir [entry.d_name] = "";
 
 		}
 
@@ -202,10 +281,11 @@ cerr << "simplefmap::output could not alloc struct dirent * (size = " << (int)di
 		s << "<body>" << endl;
 		s << "<h1>" << canonfname << "</h1>" << endl;
 		s << "<h2>" << fname << "</h2>" << endl;
-	{   map <string, string>::iterator mi;
+	{   list<direntry>::iterator li;
 	    s << "<ul>" << endl;
-	    for (mi=thedir.begin() ; mi!=thedir.end() ; mi++) {
-		s << "<li><a href=\"" << mi->first << "\">" << mi->first << "</a></li>" << endl;
+	    for (li=thedir.begin() ; li!=thedir.end() ; li++) {
+		// s << "<li><a href=\"" << mi->first << "\">" << mi->first << "</a></li>" << endl;
+		s << "<li>" << *li << "</li>" << endl;
 	    }
 	    s << "</ul>" << endl;
 	}
@@ -234,7 +314,7 @@ cerr << "simplefmap::output could not alloc struct dirent * (size = " << (int)di
 		int f = open (canonfname, O_RDONLY);
 		if (f < 0) {
 		    int e = errno;
-		    cerr << "simplefmap::output open(" << canonfname << ") failed : " << e << " " << strerror(e) << endl;
+		    req.errlog() << "simplefmap::output open(" << canonfname << ") failed : " << e << " " << strerror(e) << endl;
 
 		    free (canonfname);
 		    req.set_relative_expires (60);
@@ -244,7 +324,7 @@ cerr << "simplefmap::output could not alloc struct dirent * (size = " << (int)di
 		char * fmap = (char *) mmap(NULL, statbuf.st_size, PROT_READ, MAP_PRIVATE, f, 0);
 		if (fmap == MAP_FAILED) {
 		    int e = errno;
-		    cerr << "simplefmap::output mmap(" << canonfname << ") failed : " << e << " " << strerror(e) << endl;
+		    req.errlog() << "simplefmap::output mmap(" << canonfname << ") failed : " << e << " " << strerror(e) << endl;
 
 		    close (f);
 		    free (canonfname);
@@ -274,7 +354,7 @@ cerr << "simplefmap::output could not alloc struct dirent * (size = " << (int)di
 
 		MMapBuffer* mmbuf = new MMapBuffer (f, fmap, statbuf.st_size);
 		if (mmbuf == NULL) {
-		    cerr << "could not allocate MMapBuffer" << endl;
+		    req.errlog() << "could not allocate MMapBuffer" << endl;
 		    munmap (fmap, statbuf.st_size);
 		    close (f);
 		}
