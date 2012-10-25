@@ -49,6 +49,42 @@ namespace simplefmap {
     }
 
 
+    struct ostream_off_t { off_t f_param; };
+
+    inline ostream_off_t
+    os_off_t (off_t param)
+    { 
+	ostream_off_t funct_struct; 
+	funct_struct.f_param = param; 
+	return funct_struct; 
+    }
+
+//    template<typename _CharT, typename _Traits>
+//    inline basic_ostream<_CharT,_Traits>& 
+//    operator<<(basic_ostream<_CharT,_Traits>& out, ostream_off_t f_struct)
+
+    inline ostream& operator<< (ostream& out, ostream_off_t f_struct)
+    { 
+	static const char * mult[] = {
+	    " ", "K", "M", "G", "T", "P", "E", "Z", "Y"
+	};    
+
+	off_t reminder = f_struct.f_param;
+	off_t prereminder = 0;
+	int pow = 0;
+	while ((pow<5) && (reminder > 1024)) {
+	    prereminder = reminder % 1024;
+	    reminder >>= 10;  /* reminder /= 1024 */
+	    pow ++;
+	}
+
+	if (pow == 0)
+	    return out << reminder << "  ";
+	else 
+	    return out << reminder << '.' << (prereminder * 10)/1024 << mult[pow];
+    }
+
+
 //    ostream& operator<< (ostream& out, const time_t &t) {
 //	struct tm tt;
 //	localtime_r (&t, &tt);
@@ -65,11 +101,13 @@ namespace simplefmap {
     class direntry {
 	public:
 	    string name;
+	    int id;
 	    bool isvalid;
 	    off_t size;
 	    time_t mtime, ctime;
 	    bool isdir;
-	    direntry (const string &curdir, struct dirent const& d) : name (d.d_name) {
+	    direntry (const string &curdir, struct dirent const& d, int Id) : name (d.d_name) {
+		id = Id;
 		struct stat bstat;
 		string fname(curdir);
 		fname += "/";
@@ -88,11 +126,17 @@ namespace simplefmap {
 	    }
     };
 
+    bool direntry_cmp_ctime (direntry const &a, direntry const &b) { return a.ctime < b.ctime; }
+    bool direntry_cmp_mtime (direntry const &a, direntry const &b) { return a.mtime < b.mtime; }
+    bool direntry_cmp_size  (direntry const &a, direntry const &b) { return a.size  < b.size ; }
+    bool direntry_cmp_name  (direntry const &a, direntry const &b) { return strcasecmp (a.name.c_str(), b.name.c_str()) <= 0 ; }
+
     ostream& operator<< (ostream& out, const direntry &de) {	// JDJDJDJD some css tagging is missing here
-	out << "<a href=\"" << de.name;
+	out << "<td class=\"fsize\">" << os_off_t(de.size) << "</td><td class=\"ftime\">" << os_time_t (de.mtime) << "</td>"   // "<td class=\"ftime\">" << os_time_t (de.ctime) << "</td>"
+	    << "<td class=\"fname\"><a href=\"" << de.name;
 	if (de.isdir)
 	    out << '/';
-	out << "\">" << de.name << "</a> " << (int)de.size << " " << os_time_t (de.mtime) << " " << os_time_t (de.ctime);
+	out << "\">" << de.name << "</a></td>";
 	return out;
     }
 
@@ -239,7 +283,7 @@ req.errlog() << "simplefmap::output opendir(" << canonfname << " ) gave error " 
 		}
 
 	list <direntry> thedir;
-
+	int id = 0;
 		while (true) {
 		    struct dirent *presult;
 		    if (readdir_r(fdir, entryp, &presult) != 0)
@@ -248,7 +292,8 @@ req.errlog() << "simplefmap::output opendir(" << canonfname << " ) gave error " 
 		    if (presult == NULL)
 			break;
 
-		    thedir.push_back (direntry(canonfname, *presult));
+		    id ++;
+		    thedir.push_back (direntry(canonfname, *presult, id));
 
 //		    struct dirent &entry = *presult;
 //
@@ -277,31 +322,83 @@ req.errlog() << "simplefmap::output opendir(" << canonfname << " ) gave error " 
 		  << "     \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd\">" << endl
 		  << "<html xmlns='http://www.w3.org/1999/xhtml'>" << endl;
 
-		s << "<head><title>" << req.document_uri << "</title></head>" << endl;
+		s << "<head>" << endl
+		  << " <title>" << req.document_uri << "</title>" << endl
+		  << " <link rel=\"stylesheet\" type=\"text/css\" href=\"/stylesheet.css\">" << endl;
+
+	list<direntry>::iterator li;
+	s << "<script>" << endl
+	  << "  var nextsortmtimeasc = false," << endl
+	  << "	    nextsortnameasc = true," << endl
+	  << "	    nextsortsizeasc = false;" << endl;
+
+	thedir.sort(direntry_cmp_size);
+	s << "var bysize = new Array(";
+	for (li=thedir.begin(); li!=thedir.end(); li++)
+	    s << li->id << ',';
+	s << "null);" << endl;
+
+	thedir.sort(direntry_cmp_mtime);
+	s << "var bymtime = new Array(";
+	for (li=thedir.begin(); li!=thedir.end(); li++)
+	    s << li->id << ',';
+	s << "null);" << endl;
+
+	thedir.sort(direntry_cmp_name);
+	s << "var byname = new Array(";
+	for (li=thedir.begin(); li!=thedir.end(); li++)
+	    s << li->id << ',';
+	s << "null);" << endl;
+
+
+	s << "function sortBySize() {" << endl
+	  << "	if (nextsortsizeasc) {" << endl
+	  << "	    for (i in bysize)" << endl
+	  << "		if (bysize[i] != null) document.getElementById('thelist').appendChild(document.getElementById(bysize[i]));" << endl
+	  << "	} else {" << endl
+	  << "	    for (i=bysize.length-1 ; i>=0 ; i--)" << endl
+	  << "		if (bysize[i] != null) document.getElementById('thelist').appendChild(document.getElementById(bysize[i]));" << endl
+	  << "	}" << endl
+	  << "	nextsortsizeasc = !nextsortsizeasc;" << endl
+	  << "}" << endl;
+	s << "function sortByName() {" << endl
+	  << "	if (nextsortnameasc) {" << endl
+	  << "	    for (i in byname)" << endl
+	  << "		if (byname[i] != null) document.getElementById('thelist').appendChild(document.getElementById(byname[i]));" << endl
+	  << "	} else {" << endl
+	  << "	    for (i=byname.length-1 ; i>=0 ; i--)" << endl
+	  << "		if (byname[i] != null) document.getElementById('thelist').appendChild(document.getElementById(byname[i]));" << endl
+	  << "	}" << endl
+	  << "	nextsortnameasc = !nextsortnameasc;" << endl
+	  << "}" << endl;
+	s << "function sortByMTime() {" << endl
+	  << "	if (nextsortmtimeasc) {" << endl
+	  << "	    for (i in bymtime)" << endl
+	  << "		if (bymtime[i] != null) document.getElementById('thelist').appendChild(document.getElementById(bymtime[i]));" << endl
+	  << "	} else {" << endl
+	  << "	    for (i=bymtime.length-1 ; i>=0 ; i--)" << endl
+	  << "		if (bymtime[i] != null) document.getElementById('thelist').appendChild(document.getElementById(bymtime[i]));" << endl
+	  << "	}" << endl
+	  << "	nextsortmtimeasc = !nextsortmtimeasc;" << endl
+	  << "}" << endl;
+	s << "</script>" << endl
+	  << "</head>" << endl;
+
 		s << "<body>" << endl;
-		s << "<h1>" << canonfname << "</h1>" << endl;
-		s << "<h2>" << fname << "</h2>" << endl;
+		s << "<h1>" << req.document_uri << "</h1>" << endl;
+
 	{   list<direntry>::iterator li;
-	    s << "<ul>" << endl;
+	    s << "<table id=\"thelist\">" << endl;
+	    s << "<tr class=\"flistentry\" id=\"legend\">"
+	      << "<td class=\"listlegend\"><a href=\"javascript:void(0)\" onclick=\"sortBySize()\">size</a></td>"
+	      << "<td class=\"listlegend\"><a href=\"javascript:void(0)\" onclick=\"sortByMTime()\">mtime</a></td>"
+	      << "<td class=\"listlegend\"><a href=\"javascript:void(0)\" onclick=\"sortByName()\">name</a></td></tr>" << endl;
 	    for (li=thedir.begin() ; li!=thedir.end() ; li++) {
-		// s << "<li><a href=\"" << mi->first << "\">" << mi->first << "</a></li>" << endl;
-		s << "<li>" << *li << "</li>" << endl;
+		s << "<tr class=\"flistentry\" id=\"" << li->id << "\">"
+		  << *li << "</tr>" << endl;
 	    }
-	    s << "</ul>" << endl;
+	    s << "</table>" << endl;
 	}
-		s << "<div>" << endl;
-		s << "<tt>" << endl;
-		s << "<div>" << req.method << "</div>" << endl
-		  << "<div>" << req.document_uri << "</div>" << endl
-		  << "<div>" << req.version << "</div>" << endl;
-		s << "</tt>" << endl;
-		s << "</div>" << endl;
-		
-		s << "<div>" << endl;
-		MimeHeader::iterator mi;
-		for (mi=req.mime.begin() ; mi!=req.mime.end() ; mi++)
-		    s << "<div><i>mime</i>[<b><tt>" << mi->first << "</tt></b>] = <tt><b>" << mi->second << "</b></tt></div>" << endl;
-		s << "</div>" << endl;
 
 		s << "</body>" << endl;
 		s << "</html>" << endl;
