@@ -12,7 +12,7 @@ namespace bulkrays {
 	    // head << req.version << " 200 OK" << endl
 	    head << "HTTP/1.1" << " 200 OK" << endl
 		 << "Server: BulkRays/" << BULKRAYSVERSION << endl
-		 << "Content-Type: text/html" << endl
+		 << "Content-Type: text/html;charset=UTF-8" << endl
 		 << "Connection: keep-alive" << endl
     //             << "Accept-Ranges: bytes" << endl
 		;

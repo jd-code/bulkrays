@@ -136,7 +136,7 @@ namespace simplefmap {
 	    << "<td class=\"fname\"><a href=\"" << de.name;
 	if (de.isdir)
 	    out << '/';
-	out << "\">" << de.name << "</a></td>";
+	out << "\">" << xmlencode(de.name) << "</a></td>";
 	return out;
     }
 
@@ -184,9 +184,11 @@ namespace simplefmap {
 	    if (req.document_uri == "/")
 		isrootdir = true;
 
-// cerr << "req.document_uri = " << req.document_uri << endl;
 
-	    fname += req.document_uri;
+	    string uridecode;
+	    percentdecode (req.document_uri, uridecode);
+// req.errlog() << "req.document_uri = " << uridecode << endl;
+	    fname += uridecode;
 	    char * canonfname = realpath (fname.c_str(), NULL);
 	    if (canonfname == NULL) {
 		int e = errno;
@@ -309,7 +311,7 @@ req.errlog() << "simplefmap::output opendir(" << canonfname << " ) gave error " 
 		free (entryp);
 
 		req.statuscode = 200;
-		req.outmime["Content-Type"] = "text/html";
+		req.outmime["Content-Type"] = "text/html;charset=UTF-8";
 
 // silly test just to see about auth
 // req.statuscode = 401;
@@ -323,7 +325,7 @@ req.errlog() << "simplefmap::output opendir(" << canonfname << " ) gave error " 
 		  << "<html xmlns='http://www.w3.org/1999/xhtml'>" << endl;
 
 		s << "<head>" << endl
-		  << " <title>" << req.document_uri << "</title>" << endl
+		  << " <title>" << xmlencode (uridecode) << "</title>" << endl
 		  << " <link rel=\"stylesheet\" type=\"text/css\" href=\"/stylesheet.css\">" << endl;
 
 	list<direntry>::iterator li;
