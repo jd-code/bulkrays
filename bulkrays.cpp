@@ -54,7 +54,7 @@ namespace bulkrays {
 		}
 		int d = hexfromchar(src[i+1]);
 		int u = hexfromchar(src[i+2]);
-		if ((d<0) || (u<<0)) {
+		if ((d<0) || (u<0)) {
 		    nberror++;
 		    result += src[i++];
 		    result += src[i++];
@@ -606,7 +606,7 @@ static const char* monthname[] = {
 	     << " <style>" << bendl
 	     << "  .bomb64 { background: url(data:image/gif;base64," << bomb64_gif << ")" << bendl
 	     << "            top left no-repeat;" << bendl
-	     << "            height: 72px; width: 64px; margin 0.1em; float: left;" << bendl
+	     << "            height: 72px; width: 64px; margin: 0.1em; float: left;" << bendl
 	     << "          }" << bendl
 	     << " </style>" << bendl
 	     << "</head>" << bendl
@@ -625,7 +625,7 @@ static const char* monthname[] = {
 	     << "<p>bulkrays http server</p>" << bendl
 	     << "</body>";
 
-	req.outmime ["Content-Type"] = "text/html";
+	req.outmime ["Content-Type"] = "text/html;charset=ASCII";
 	req.outmime ["Accept-Ranges"] = "bytes";
 //	req.outmime ["Retry-After"] = "5";
 	req.set_contentlength (body.str().size());
