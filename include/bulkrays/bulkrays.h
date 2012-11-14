@@ -207,6 +207,13 @@ static ostream * clog;
     // each host has it's own URIMapper
     typedef map <string, URIMapper*> THostMapper;
     BULKRAYS_H_SCOPE THostMapper hostmapper;
+#ifdef BULKRAYS_H_GLOBINST
+    BULKRAYS_H_SCOPE bool wehaveadefaulthost = false;
+    BULKRAYS_H_SCOPE THostMapper::iterator mi_defaulthost = hostmapper.end();
+#else
+    BULKRAYS_H_SCOPE bool wehaveadefaulthost;
+    BULKRAYS_H_SCOPE THostMapper::iterator mi_defaulthost;
+#endif
 
     int bootstrap_global (void);
 
