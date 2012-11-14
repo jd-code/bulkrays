@@ -682,7 +682,20 @@ errlog() << "lastbwindex = " << lastbwindex << " shouldn't it be 0 ???" << endl;
 // [0]
 
     ostream& HttppConn::shorterrlog (void) {
-	return cerr << "[" << fd << " : " << id << " : " << name << "] ";
+	time_t t;
+	time (&t);
+	struct tm tm;
+	gmtime_r(&t, &tm);
+
+	return cerr 
+	    << "[" << setfill('0')
+	       << setw(2) << tm.tm_mday << '/'
+	       << setw(2) << tm.tm_mon+1 << '/'
+	       << setw(4) << tm.tm_year + 1900 << ':'
+	       << setw(2) << tm.tm_hour << ':'
+	       << setw(2) << tm.tm_min << ':'
+	       << setw(2) << tm.tm_sec << "] \""
+	    << "[" << fd << " : " << id << " : " << name << "] ";
     }
 
     ostream& HttppConn::errlog (void) {

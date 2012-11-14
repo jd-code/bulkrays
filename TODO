@@ -1,5 +1,7 @@
 
 bulkrays:
+    utiliser zlib pour gzip et deflater
+    troubles with w3m ??????
     gerer des timouts sur la reception de reqs http SO_RCVTIMEO and SO_SNDTIMEO ?
     graceful quit (w or wo connection pending) + flush (logs)
     possibilité d'avoir un catch-all au niveau de Host: bon pour les embeded server
