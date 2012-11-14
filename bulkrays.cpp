@@ -1113,14 +1113,18 @@ if (debugparsereq) {
 	    request.host = mi_host->second;
 	    THostMapper::iterator mi = hostmapper.find (request.host);
 	    if (mi == hostmapper.end()) {
-		errlog() << "unhandled Host :" << request.host << endl;
-		request.set_relative_expires (60);
-		returnerror.shortcuterror ((*out), request, 404, "Unkown Virtual Host");  // JDJDJDJD we should have a default host
-								    // JDJDJDJD we should be able to tune the error message (Unknown virtual host.)
-		gettimeofday(&entering_WaitingEOW, NULL);
-		state = WaitingEOW;
-		flushandclose();
-		return;
+		if (wehaveadefaulthost) {
+		    mi = mi_defaulthost;
+		} else { 
+		    errlog() << "unhandled Host :" << request.host << endl;
+		    request.set_relative_expires (60);
+		    returnerror.shortcuterror ((*out), request, 404, "Unkown Virtual Host");  // JDJDJDJD we should have a default host
+									// JDJDJDJD we should be able to tune the error message (Unknown virtual host.)
+		    gettimeofday(&entering_WaitingEOW, NULL);
+		    state = WaitingEOW;
+		    flushandclose();
+		    return;
+		}
 	    }
 	    TreatRequest* treatrequest = mi->second->treatrequest (request);
 	    if (treatrequest == NULL) {
@@ -1151,7 +1155,7 @@ if (debugparsereq) {
 
     void HttppConn::eow_hook (void) {
 if ((state != WaitingEOW) && (state != HTTPRequestLine))
-errlog() << "HttppConn::eow_hook called while not in WaitingEOW or HTTPRequestLine state !  state = " << (int) state << endl;
+errlog() << "HttppConn::eow_hook called while not in WaitingEOW or HTTPRequestLine !!  state = " << (int) state << endl;
 	if (state == WaitingEOW) {	// JDJDJDJD logging should go here !!!
 	    gettimeofday(&ending_WaitingEOW, NULL);
 	    request.logger();
