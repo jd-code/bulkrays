@@ -208,6 +208,9 @@ static ostream * clog;
     typedef map <string, URIMapper*> THostMapper;
     BULKRAYS_H_SCOPE THostMapper hostmapper;
 
+
+    bool set_default_host (string &hostname);
+
     int bootstrap_global (void);
 
     class HttppConn : public SocketConnection
