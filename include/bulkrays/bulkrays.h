@@ -216,7 +216,7 @@ static ostream * clog;
 #endif
 
 
-    bool set_default_host (string &hostname);
+    bool set_default_host (string const &hostname);
 
     int bootstrap_global (void);
 
