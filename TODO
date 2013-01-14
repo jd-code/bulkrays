@@ -1,6 +1,7 @@
 
 bulkrays:
     trouver un moyen de gerer une conf ... au moins pour les params globaux ? :(
+    conf : default char encoding ?
     faire un generateur de paquetage configures et estampilles(stamp=IP ou stamp=service) ?
     utiliser zlib pour gzip et deflater
     troubles with w3m ??????

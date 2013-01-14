@@ -226,6 +226,9 @@ static ostream * clog;
     BULKRAYS_H_SCOPE THostMapper::iterator mi_defaulthost;
 #endif
 
+
+    bool set_default_host (string const &hostname);
+
     int bootstrap_global (void);
 
     class HttppConn : public SocketConnection

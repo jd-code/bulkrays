@@ -711,6 +711,18 @@ errlog() << "lastbwindex = " << lastbwindex << " shouldn't it be 0 ???" << endl;
 	return pdummyconnection->errlog();
     }
 
+    bool set_default_host (string const &hostname) {
+	THostMapper::iterator mi = hostmapper.find (hostname);
+	mi_defaulthost = mi;
+	if (mi == hostmapper.end()) {
+	    wehaveadefaulthost = false;
+	    return false;
+	} else {
+	    wehaveadefaulthost = true;
+	    return true;
+	}
+    }
+
     void HttppConn::compute_reqbodylen (void) {
 // errlog() << "HttppConn::compute_reqbodylen" << endl;
 	MimeHeader::iterator mi = request.mime.find("Content-Length");
