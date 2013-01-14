@@ -149,7 +149,18 @@ static ostream * clog;
 	    ~HTTPRequest ();
     };
 
-    BULKRAYS_H_SCOPE ConnectionPool connectionpool;
+    class BulkRaysCPool : public ConnectionPool {
+	protected:
+	    virtual void treat_signal (void);
+	public:
+	    BulkRaysCPool (void) : ConnectionPool () {}
+	    virtual ~BulkRaysCPool () {}
+	    virtual int select_poll (struct timeval *timeout) {
+		return ConnectionPool::select_poll (timeout);
+	    }
+    };
+
+    BULKRAYS_H_SCOPE BulkRaysCPool bulkrayscpool;
 
 #ifdef BULKRAYS_H_GLOBINST
     BULKRAYS_H_SCOPE

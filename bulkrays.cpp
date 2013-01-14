@@ -11,6 +11,7 @@
 #include <grp.h>
 
 #include <errno.h>
+#include <signal.h>
 
 #define QICONN_H_GLOBINST
 #define BULKRAYS_H_GLOBINST
@@ -1155,6 +1156,25 @@ errlog() << "HttppConn::eow_hook called while not in WaitingEOW or HTTPRequestLi
     }
 
     ostream * HTTPRequest::clog = &cerr;
+
+
+    void BulkRaysCPool::treat_signal (void) {
+int i;
+for (i=0 ; i<256 ; i++) {
+    if (pend_signals [i] != 0)
+	cerr << "got signal " << i << " " << pend_signals [i] << " times" << endl;
+}
+	if (pend_signals [SIGQUIT] != 0) {
+	    exitselect = true;
+	    pend_signals [SIGQUIT] = 0;
+	}
+	if (pend_signals [SIGINT] != 0) {
+	    exitselect = true;
+	    pend_signals [SIGINT] = 0;
+	}
+	ConnectionPool::treat_signal();
+    } 
+
 }
 
 using namespace std;
@@ -1264,9 +1284,11 @@ int main (int nb, char ** cmde) {
 
 
 
-    connectionpool.init_signal ();
+    bulkrayscpool.init_signal ();
+    bulkrayscpool.add_signal_handler (SIGQUIT);
+    bulkrayscpool.add_signal_handler (SIGINT);
     
-    connectionpool.push (ls);
+    bulkrayscpool.push (ls);
     
     struct timeval timeout;
     timeout.tv_sec = 0;
@@ -1275,11 +1297,14 @@ int main (int nb, char ** cmde) {
     status_message_globalinit ();
     bootstrap_global ();
 
-    connectionpool.select_loop (timeout);
+    bulkrayscpool.select_loop (timeout);
 
     cerr << "terminating" << endl;
 
+    bulkrayscpool.closeall ();
+
     close (s);
+
     return 0;
 }
 
