@@ -158,7 +158,52 @@ static ostream * clog;
 	    virtual int select_poll (struct timeval *timeout) {
 		return ConnectionPool::select_poll (timeout);
 	    }
+	    void askforexit (const char * reason);
     };
+
+    void sillyconsolelineread (BufConnection &bcin, BufConnection &bcout, BulkRaysCPool *bcp);
+
+    class SillyConsole : public BufConnection {
+	protected:
+	    BulkRaysCPool *bcp;
+	    string name;
+	public:
+	    virtual ~SillyConsole (void);
+	    SillyConsole (int fd, BulkRaysCPool *bcp);
+	    virtual void lineread (void) {
+		sillyconsolelineread (*this, *this, bcp);
+	    }
+	    inline virtual string getname (void) {
+		return name;
+	    }
+    };
+
+    class SillyConsoleOut : public BufConnection {
+	public:
+	    virtual ~SillyConsoleOut (void) {};
+	    SillyConsoleOut (int fd) : BufConnection(fd) {};
+	    virtual void lineread (void) {}
+	    inline virtual string getname (void) {
+		return "SillyConsoleOut";
+	    }
+    };
+
+    class SillyConsoleIn : public BufConnection {
+	protected:
+	    SillyConsoleOut *sco;
+	    BulkRaysCPool *bcp;
+	    string name;
+	public:
+	    virtual ~SillyConsoleIn (void);
+	    SillyConsoleIn (int fd, SillyConsoleOut *sco, BulkRaysCPool *bcp);
+	    virtual void lineread (void) {
+		sillyconsolelineread (*this, *sco, bcp);
+	    }
+	    inline virtual string getname (void) {
+		return name;
+	    }
+    };
+
 
     BULKRAYS_H_SCOPE BulkRaysCPool bulkrayscpool;
 
@@ -273,7 +318,6 @@ static int idnum;
 #ifdef BULKRAYS_H_GLOBINST
 int HttppConn::idnum = 0;
 #endif
-
 
     class HttppBinder : public ListeningSocket
     {

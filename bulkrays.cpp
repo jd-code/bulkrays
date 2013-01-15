@@ -1169,6 +1169,83 @@ errlog() << "HttppConn::eow_hook called while not in WaitingEOW or HTTPRequestLi
 
     ostream * HTTPRequest::clog = &cerr;
 
+    
+
+    SillyConsole::SillyConsole (int fd, BulkRaysCPool *bcp)
+      : BufConnection (fd),
+	bcp(bcp)
+    {	stringstream ss;
+	ss << "SillyConsole-fd[" << fd << "]";
+	name = ss.str();
+    }
+
+    SillyConsole::~SillyConsole (void) {
+	// nothing to do there yet
+    }
+
+    SillyConsoleIn::SillyConsoleIn (int fd, SillyConsoleOut *sco, BulkRaysCPool *bcp)
+      : BufConnection (fd),
+	sco(sco),
+	bcp(bcp)
+    {	stringstream ss;
+	ss << "SillyConsoleIn-fd[" << fd << "]";
+	name = ss.str();
+    }
+
+    SillyConsoleIn::~SillyConsoleIn (void) {
+	// nothing to do there yet
+    }
+
+    void sillyconsolelineread (BufConnection &bcin, BufConnection &bcout, BulkRaysCPool *bcp) {
+	size_t p = 0, s = bcin.bufin.size();
+	string command;
+	while ((p<s) && isspace (bcin.bufin[p])) p++;
+	while ((p<s) && isalnum (bcin.bufin[p])) command += bcin.bufin[p++];
+
+	if (command.size() == 0)
+	    return;
+
+	if (command == "shutdown") {
+	    (*bcout.out) << "sending exitrequest to connection-pool" << endl;
+	    bcout.flush();
+	    if (bcp != NULL) {
+		bcp->askforexit (" exit request from Sillyconsole");
+	    } else {
+		(*bcout.out) << "failed : bcp == NULL ?" << endl;
+		bcout.flush();
+	    }
+	} else if (command == "help") {
+	    (*bcout.out) << "shutdown         closes the server cleanly" << endl
+			 << "help             this help" << endl
+		;
+	    bcout.flush();
+	} else {
+	    (*bcout.out) << "unrecognised command : \"" << command << '"' << endl;
+	    bcout.flush();
+	}
+	(*bcout.out) << "> ";
+	bcout.flush ();
+    }
+
+    void BulkRaysCPool::askforexit (const char * reason) {
+	exitselect = true;
+	time_t t;
+	time (&t);
+	struct tm tm;
+	gmtime_r(&t, &tm);
+
+	cerr 
+	    << "[" << setfill('0')
+	       << setw(2) << tm.tm_mday << '/'
+	       << setw(2) << tm.tm_mon+1 << '/'
+	       << setw(4) << tm.tm_year + 1900 << ':'
+	       << setw(2) << tm.tm_hour << ':'
+	       << setw(2) << tm.tm_min << ':'
+	       << setw(2) << tm.tm_sec << "] "
+	    << "[CP :-: BulkRaysCPool] "
+	    << " asked to exit : "
+	    << reason << endl;
+    }
 
     void BulkRaysCPool::treat_signal (void) {
 int i;
@@ -1177,11 +1254,11 @@ for (i=0 ; i<256 ; i++) {
 	cerr << "got signal " << i << " " << pend_signals [i] << " times" << endl;
 }
 	if (pend_signals [SIGQUIT] != 0) {
-	    exitselect = true;
+	    askforexit ("got signal SIGQUIT");
 	    pend_signals [SIGQUIT] = 0;
 	}
 	if (pend_signals [SIGINT] != 0) {
-	    exitselect = true;
+	    askforexit ("got signal SIGINT");
 	    pend_signals [SIGINT] = 0;
 	}
 	ConnectionPool::treat_signal();
@@ -1294,13 +1371,16 @@ int main (int nb, char ** cmde) {
     }
     HTTPRequest::clog = &cflog;
 
-
+    SillyConsoleOut sillyconsolestdout (1);
+    SillyConsoleIn sillyconsolestdin (0, &sillyconsolestdout, &bulkrayscpool);
 
     bulkrayscpool.init_signal ();
     bulkrayscpool.add_signal_handler (SIGQUIT);
     bulkrayscpool.add_signal_handler (SIGINT);
     
     bulkrayscpool.push (ls);
+    bulkrayscpool.push (&sillyconsolestdout);
+    bulkrayscpool.push (&sillyconsolestdin);
     
     struct timeval timeout;
     timeout.tv_sec = 0;
@@ -1310,6 +1390,9 @@ int main (int nb, char ** cmde) {
     bootstrap_global ();
 
     bulkrayscpool.select_loop (timeout);
+
+    sillyconsolestdout.deregister_from_pool();	// so that some other stuff can still be done on stdin/out
+    sillyconsolestdin.deregister_from_pool();
 
     cerr << "terminating" << endl;
 
