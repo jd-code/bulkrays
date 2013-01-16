@@ -1190,6 +1190,8 @@ errlog() << "HttppConn::eow_hook called while not in WaitingEOW or HTTPRequestLi
     {	stringstream ss;
 	ss << "SillyConsoleIn-fd[" << fd << "]";
 	name = ss.str();
+	(*sco->out) << "Bulkrays SillyConsole" << endl;
+	sco->flush();
     }
 
     SillyConsoleIn::~SillyConsoleIn (void) {
@@ -1205,7 +1207,7 @@ errlog() << "HttppConn::eow_hook called while not in WaitingEOW or HTTPRequestLi
 	if (command.size() == 0)
 	    return;
 
-	if (command == "shutdown") {
+	if (command == "turnoff") {
 	    (*bcout.out) << "sending exitrequest to connection-pool" << endl;
 	    bcout.flush();
 	    if (bcp != NULL) {
@@ -1215,7 +1217,7 @@ errlog() << "HttppConn::eow_hook called while not in WaitingEOW or HTTPRequestLi
 		bcout.flush();
 	    }
 	} else if (command == "help") {
-	    (*bcout.out) << "shutdown         closes the server cleanly" << endl
+	    (*bcout.out) << "turnoff         closes the server cleanly" << endl
 			 << "help             this help" << endl
 		;
 	    bcout.flush();
@@ -1371,14 +1373,16 @@ int main (int nb, char ** cmde) {
     }
     HTTPRequest::clog = &cflog;
 
-    SillyConsoleOut sillyconsolestdout (1);
-    SillyConsoleIn sillyconsolestdin (0, &sillyconsolestdout, &bulkrayscpool);
 
     bulkrayscpool.init_signal ();
     bulkrayscpool.add_signal_handler (SIGQUIT);
     bulkrayscpool.add_signal_handler (SIGINT);
     
     bulkrayscpool.push (ls);
+
+    SillyConsoleOut sillyconsolestdout (1);
+    SillyConsoleIn sillyconsolestdin (0, &sillyconsolestdout, &bulkrayscpool);
+
     bulkrayscpool.push (&sillyconsolestdout);
     bulkrayscpool.push (&sillyconsolestdin);
     
@@ -1391,8 +1395,8 @@ int main (int nb, char ** cmde) {
 
     bulkrayscpool.select_loop (timeout);
 
-    sillyconsolestdout.deregister_from_pool();	// so that some other stuff can still be done on stdin/out
-    sillyconsolestdin.deregister_from_pool();
+    sillyconsolestdin.deregister_from_pool();	// so that some other stuff can still be done on stdin/out
+    sillyconsolestdout.deregister_from_pool();
 
     cerr << "terminating" << endl;
 
