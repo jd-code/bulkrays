@@ -261,7 +261,16 @@ static ostream * clog;
     };
 
     // each host has it's own URIMapper
-    typedef map <string, URIMapper*> THostMapper;
+
+    // typedef map <string, URIMapper*> THostMapper;
+    class THostMapper : public map <string, URIMapper*> {
+	public:
+	    bool deregisterall (URIMapper* up);
+    };
+
+
+
+
     BULKRAYS_H_SCOPE THostMapper hostmapper;
 #ifdef BULKRAYS_H_GLOBINST
     BULKRAYS_H_SCOPE bool wehaveadefaulthost = false;
@@ -274,7 +283,21 @@ static ostream * clog;
 
     bool set_default_host (string const &hostname);
 
-    int bootstrap_global (void);
+    typedef enum {
+	StartUp,
+	ShutDown
+    } BSOperation;
+
+    int bootstrap_global (BSOperation op);
+
+    inline ostream& operator<< (ostream& out, BSOperation const &op) {
+	switch (op) {
+	    case StartUp:
+		return out << "Startup";
+	    case ShutDown:
+		return out << "ShutDown";
+	}
+    }
 
     class HttppConn : public SocketConnection
     {

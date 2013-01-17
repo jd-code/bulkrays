@@ -1266,7 +1266,23 @@ for (i=0 ; i<256 ; i++) {
 	ConnectionPool::treat_signal();
     } 
 
-}
+
+    bool THostMapper::deregisterall (URIMapper* um) {
+	if (um == NULL) return false;
+	bool found = false;
+	THostMapper::iterator mi;
+	for (mi=begin() ; mi != end() ;) {
+	    THostMapper::iterator mj = mi;
+	    mi ++;
+	    if (mj->second == um) {
+		erase (mj);
+		found = true;
+	    }
+	}
+	return found;
+    }
+
+} // namespace bulkrays
 
 using namespace std;
 using namespace qiconn;
@@ -1391,7 +1407,7 @@ int main (int nb, char ** cmde) {
     timeout.tv_usec = 1000;
 
     status_message_globalinit ();
-    bootstrap_global ();
+    bootstrap_global (bulkrays::StartUp);
 
     bulkrayscpool.select_loop (timeout);
 
@@ -1403,6 +1419,8 @@ int main (int nb, char ** cmde) {
     bulkrayscpool.closeall ();
 
     close (s);
+
+    bootstrap_global (bulkrays::ShutDown);
 
     return 0;
 }
