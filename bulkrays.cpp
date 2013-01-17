@@ -1294,6 +1294,7 @@ int main (int nb, char ** cmde) {
     string address ("0.0.0.0");
     int port = 80;
     string flogname("/var/log/bulkrays/access_log");	// JDJDJDJD we should introduce a DEFINEd scheme for such defaults
+    bool activatettyconsole = false;
 
     int i;
     for (i=1 ; i<nb ; i++) {
@@ -1301,7 +1302,8 @@ int main (int nb, char ** cmde) {
 	    cout << cmde[0] << "   \\" << endl
 			    << "      [--bind=[address][:port]]  \\" << endl
 			    << "      [--user=[user][:group]]  \\" << endl
-			    << "      [--access_log=filename]" << endl;
+			    << "      [--access_log=filename]" << endl
+			    << "      [--console]" << endl;
 	    return 0;
 	} else if (strncmp (cmde[i], "--bind=", 7) == 0) {
 	    string scheme(cmde[i]+7);
@@ -1333,6 +1335,8 @@ int main (int nb, char ** cmde) {
 		if (p>0)
 		    user = scheme.substr(0,p);
 	    }
+	} else if (strncmp (cmde[i], "--console", 9) == 0) {
+	    activatettyconsole = true;
 	} else {
 	    cerr << "unknown option : " << cmde[i] << endl;
 	}
@@ -1396,11 +1400,14 @@ int main (int nb, char ** cmde) {
     
     bulkrayscpool.push (ls);
 
-    SillyConsoleOut sillyconsolestdout (1);
-    SillyConsoleIn sillyconsolestdin (0, &sillyconsolestdout, &bulkrayscpool);
-
-    bulkrayscpool.push (&sillyconsolestdout);
-    bulkrayscpool.push (&sillyconsolestdin);
+    SillyConsoleOut *psillyconsolestdout = NULL;
+    SillyConsoleIn *psillyconsolestdin = NULL;
+    if (activatettyconsole) {
+	psillyconsolestdout = new SillyConsoleOut (1);
+	psillyconsolestdin = new SillyConsoleIn (0, psillyconsolestdout, &bulkrayscpool);
+	bulkrayscpool.push (psillyconsolestdout);
+	bulkrayscpool.push (psillyconsolestdin);
+    }
     
     struct timeval timeout;
     timeout.tv_sec = 0;
@@ -1411,8 +1418,14 @@ int main (int nb, char ** cmde) {
 
     bulkrayscpool.select_loop (timeout);
 
-    sillyconsolestdin.deregister_from_pool();	// so that some other stuff can still be done on stdin/out
-    sillyconsolestdout.deregister_from_pool();
+    if (psillyconsolestdin != NULL) {
+	psillyconsolestdin->deregister_from_pool();	// so that some other stuff can still be done on stdin/out
+	delete (psillyconsolestdin);
+    }
+    if (psillyconsolestdout != NULL) {
+	psillyconsolestdout->deregister_from_pool();
+	delete (psillyconsolestdout);
+    }
 
     cerr << "terminating" << endl;
 
