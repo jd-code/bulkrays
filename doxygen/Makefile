@@ -1,0 +1,5 @@
+
+vimtest:
+	cd .. && sh ./dodoc
+
+

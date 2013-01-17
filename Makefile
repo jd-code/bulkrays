@@ -37,7 +37,7 @@ clean:
 
 distclean: clean
 
-doc: *.h *.cpp bulkrays.dox
+doc: include/bulkrays/*.h *.cpp bulkrays.dox
 	doxygen bulkrays.dox
 
 .PHONY: clean
