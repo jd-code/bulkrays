@@ -4,7 +4,7 @@ DEBUG=-g
 INCLUDES=-I./include -I./qiconn/include
 PREFIX=/usr/local
 SHELL=/bin/sh
-VERSION=0.0.3
+VERSION=0.0.4
 
 default: all
 
@@ -33,6 +33,7 @@ include/bulkrays/bulkrays.h: qiconn/include/qiconn/qiconn.h
 
 clean:
 	rm -f *.o bulkrays
+	rm -rf bulkrays-doc
 	( cd qiconn ; make clean )
 
 distclean: clean
