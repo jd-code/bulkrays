@@ -477,14 +477,24 @@ req.errlog() << "simplefmap::output opendir(" << canonfname << " ) gave error " 
 	    }
     };
 
-    int simplefmap_global (void) {
-	fmap_urimapper *mapper = new fmap_urimapper("/home/");
-//	fmap_urimapper *mapper = new fmap_urimapper("/BIG/home/webs/hashttpp.zz/html");
-	if (mapper == NULL) {
-	    cerr << "bulkrays::testsite_global could not allocate fmap_urimapper" << endl;
-	    return -1;
+    fmap_urimapper *mapper = NULL;
+    int simplefmap_global (BSOperation op) {
+	switch (op) {
+	  case StartUp:
+	    mapper = new fmap_urimapper("/home/");
+//	    mapper = new fmap_urimapper("/BIG/home/webs/hashttpp.zz/html");
+	    if (mapper == NULL) {
+		cerr << "bulkrays::testsite_global could not allocate fmap_urimapper" << endl;
+		return -1;
+	    }
+	    hostmapper["hashttpp.zz"] = mapper;
+	    return 0;
+
+	  case ShutDown:
+	    if (mapper == NULL) return -1;
+	    hostmapper.deregisterall (mapper);
+	    delete (mapper);
+	    return 0;
 	}
-	hostmapper["hashttpp.zz"] = mapper;
-	return 0;
     }
 }

@@ -60,13 +60,24 @@ namespace bulkrays {
 	    }
     };
 
-    int testsite_global (void) {
-	TestSite_SimpleURIMapper *mapper = new TestSite_SimpleURIMapper();
-	if (mapper == NULL) {
-	    cerr << "bulkrays::testsite_global could not allocate TestSite_SimpleURIMapper" << endl;
-	    return -1;
+    TestSite_SimpleURIMapper *mapper = NULL;
+
+    int testsite_global (BSOperation op) {
+	switch (op) {
+	  case StartUp:
+	    mapper = new TestSite_SimpleURIMapper();
+	    if (mapper == NULL) {
+		cerr << "bulkrays::testsite_global could not allocate TestSite_SimpleURIMapper" << endl;
+		return -1;
+	    }
+	    hostmapper["bulkrays.zz"] = mapper;
+	    return 0;
+
+	  case ShutDown:
+	    if (mapper == NULL) return -1;
+	    hostmapper.deregisterall (mapper);
+	    delete (mapper);
+	    return 0;
 	}
-	hostmapper["bulkrays.zz"] = mapper;
-	return 0;
     }
 }
