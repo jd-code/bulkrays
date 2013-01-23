@@ -1457,10 +1457,16 @@ int main (int nb, char ** cmde) {
 		}
 	    }
 	}
-	psillyconsolestdout = new SillyConsoleOut (1);
-	psillyconsolestdin = new SillyConsoleIn (0, psillyconsolestdout, &bulkrayscpool);
-	bulkrayscpool.push (psillyconsolestdout);
-	bulkrayscpool.push (psillyconsolestdin);
+	if ((psillyconsolestdout = new SillyConsoleOut (1)) == NULL) {
+	    cerr << "could not allocate SillyConsoleOut" << endl;
+	} else {
+	    psillyconsolestdout->register_into_pool (&bulkrayscpool, false);
+	}
+	if ((psillyconsolestdin = new SillyConsoleIn (0, psillyconsolestdout, &bulkrayscpool)) == NULL) {
+	    cerr << "could not allocate SillyConsoleIn" << endl;
+	} else {
+	    bulkrayscpool.push (psillyconsolestdin);
+	}
     }
     
     struct timeval timeout;
