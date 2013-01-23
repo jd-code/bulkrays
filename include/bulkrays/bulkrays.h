@@ -147,7 +147,13 @@ static ostream * clog;
 		initoutmime ();
 	    }
 	    ~HTTPRequest ();
+
+	    ostream& dump (ostream& out) const;
     };
+
+    inline ostream& operator<< (ostream& out, HTTPRequest const &op) {
+	return op.dump (out);
+    }
 
     class BulkRaysCPool : public ConnectionPool {
 	protected:

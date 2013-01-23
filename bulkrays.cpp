@@ -13,6 +13,9 @@
 #include <errno.h>
 #include <signal.h>
 
+#include <unistd.h>
+#include <fcntl.h>
+
 #define QICONN_H_GLOBINST
 #define BULKRAYS_H_GLOBINST
 #include "bulkrays/bulkrays.h"
@@ -711,6 +714,46 @@ errlog() << "lastbwindex = " << lastbwindex << " shouldn't it be 0 ???" << endl;
 	return pdummyconnection->errlog();
     }
 
+    const char * charitnull = "NULL";
+    const char * boolittrue = "TRUE";
+    const char * boolitfalse = "FALSE";
+
+    inline const char * charit (const char *p) { return (p == NULL) ? charitnull : p; }
+    inline const char * boolit (bool b) { return b ? boolittrue : boolitfalse; }
+
+#define BEGIN_TERM_IDENT  "\033[33m"
+#define BEGIN_TERM_VALUE  "\033[36m"
+#define END_TERM_IDENT  "\033[m"
+
+    ostream& HTTPRequest::dump (ostream& out) const {
+	const char  *I = BEGIN_TERM_IDENT,
+		    *V = BEGIN_TERM_VALUE,
+		    *E = END_TERM_IDENT;
+      return out
+//	<< I << "pdummyconnection -> "   << E << "= " << E << V << (*pdummyconnection) << E << endl
+	<< I << "statuscode "            << E << "= " << E << V << statuscode << E << endl
+	<< I << "errormsg "              << E << "= " << E << V << charit(errormsg) << E << endl
+	<< I << "suberrormsg "           << E << "= " << E << V << charit(errormsg) << E << endl
+	<< I << "expires_set "           << E << "= " << E << V << boolit(expires_set) << E << endl
+	<< I << "headerpublished "       << E << "= " << E << V << boolit(headerpublished) << E << endl
+	<< I << "method "                << E << "= " << E << V << method << E << endl
+	<< I << "host "                  << E << "= " << E << V << host << E << endl
+        << I << "req_uri "               << E << "= " << E << V << req_uri << E << endl
+        << I << "document_uri "          << E << "= " << E << V << document_uri << E << endl
+        << I << "version "               << E << "= " << E << V << version << E << endl
+        << I << "reqbodylen "            << E << "= " << E << V << reqbodylen << E << endl
+        << I << "readbodybytes "         << E << "= " << E << V << readbodybytes << E << endl
+             << "req_body NOTDUMPED" << endl
+	     << endl
+	     << ostreamMap(outmime,        BEGIN_TERM_IDENT "outmime"         END_TERM_IDENT) << endl
+	     << ostreamMap(mime,           BEGIN_TERM_IDENT "mime"            END_TERM_IDENT) << endl
+//	     << ostreamMap(req_fields,     BEGIN_TERM_IDENT "req_fields"     END_TERM_IDENT) << endl
+	     << ostreamMap(uri_fields,     BEGIN_TERM_IDENT "uri_fields"     END_TERM_IDENT) << endl
+	     << ostreamMap(body_fields,    BEGIN_TERM_IDENT "body_fields"    END_TERM_IDENT) << endl
+//	     << ostreamMap(content_fields, BEGIN_TERM_IDENT "content_fields" END_TERM_IDENT) << endl
+	;
+    }
+
     bool set_default_host (string const &hostname) {
 	THostMapper::iterator mi = hostmapper.find (hostname);
 	mi_defaulthost = mi;
@@ -1301,8 +1344,9 @@ int main (int nb, char ** cmde) {
 	if (strncmp (cmde[i], "--help", 6) == 0) {
 	    cout << cmde[0] << "   \\" << endl
 			    << "      [--bind=[address][:port]]  \\" << endl
-			    << "      [--user=[user][:group]]  \\" << endl
-			    << "      [--access_log=filename]" << endl
+			    << "      [--user=[user][:group]]    \\" << endl
+			    << "      [--access_log=filename]    \\" << endl
+			    << "      [--earlylog]               \\" << endl
 			    << "      [--console]" << endl;
 	    return 0;
 	} else if (strncmp (cmde[i], "--bind=", 7) == 0) {
@@ -1403,6 +1447,16 @@ int main (int nb, char ** cmde) {
     SillyConsoleOut *psillyconsolestdout = NULL;
     SillyConsoleIn *psillyconsolestdin = NULL;
     if (activatettyconsole) {
+	{   int flags;	// JDJDJDJD this part could be avoided if Connection object could be marked "not for reading" in ConnectionPool
+	    if ((flags = fcntl (1, F_GETFL, 0)) < 0) {
+		cerr << "fcntl F_GETFL failed on stdout" << endl;
+	    } else {
+		flags |= O_NONBLOCK;
+		if (fcntl (1, F_SETFL, flags) < 0) {
+		    cerr << "could not set O_NONBLOCK on stdout" << endl;
+		}
+	    }
+	}
 	psillyconsolestdout = new SillyConsoleOut (1);
 	psillyconsolestdin = new SillyConsoleIn (0, psillyconsolestdout, &bulkrayscpool);
 	bulkrayscpool.push (psillyconsolestdout);
