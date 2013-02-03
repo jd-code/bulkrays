@@ -22,6 +22,8 @@ bulkrays:
     req_body parsing : utiliser un mode plus strict d'erreurs report
     %00 in percentdecode ??????
 
+    honor the Connection: close   request header (yet we don't) ?
+
 
     versionnisation /vxxx/ obligatoire des elements de composition ?
 	parsing auto des .html pour remplacement des vxxx

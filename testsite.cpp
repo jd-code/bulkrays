@@ -7,7 +7,7 @@ namespace bulkrays {
       public:
 	TestSite_SimpleParrot () : TreatRequest () {}
 	~TestSite_SimpleParrot () {}
-	virtual int output (ostream &cout, HTTPRequest &req) {
+	virtual TReqResult output (ostream &cout, HTTPRequest &req) {
 	    stringstream head;
 	    // head << req.version << " 200 OK" << endl
 	    head << "HTTP/1.1" << " 200 OK" << endl
@@ -45,7 +45,7 @@ namespace bulkrays {
 	    head << endl;
 	    cout << head.str() << s.str();
 	    
-	    return 0;
+	    return TRCompleted;
 	}
     };
 
