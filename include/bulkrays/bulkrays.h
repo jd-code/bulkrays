@@ -282,6 +282,7 @@ static ostream * clog;
 
 
     bool set_default_host (string const &hostname);
+    void unset_default_host (void);
 
     typedef enum {
 	StartUp,

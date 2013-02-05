@@ -723,6 +723,10 @@ errlog() << "lastbwindex = " << lastbwindex << " shouldn't it be 0 ???" << endl;
 	}
     }
 
+    void unset_default_host (void) {
+	wehaveadefaulthost = false;
+    }
+
     void HttppConn::compute_reqbodylen (void) {
 // errlog() << "HttppConn::compute_reqbodylen" << endl;
 	MimeHeader::iterator mi = request.mime.find("Content-Length");
