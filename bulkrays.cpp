@@ -13,6 +13,9 @@
 #include <errno.h>
 #include <signal.h>
 
+#include <unistd.h>
+#include <fcntl.h>
+
 #define QICONN_H_GLOBINST
 #define BULKRAYS_H_GLOBINST
 #include "bulkrays/bulkrays.h"
@@ -410,14 +413,14 @@ namespace bulkrays {
 	struct tm tm;
 	gmtime_r(&t, &tm);
 
-//	clog << pdummyconnection->getname() << " " << method << " " << host << req_uri << " " << statuscode << " " << msg << endl;
+//	clog << httppconn->getname() << " " << method << " " << host << req_uri << " " << statuscode << " " << msg << endl;
 	(*clog) 
-	    << millidiff (pdummyconnection->entering_ReadBody,		pdummyconnection->entering_HTTPRequestLine) << " "
-	    << millidiff (pdummyconnection->entering_NowTreatRequest,	pdummyconnection->entering_ReadBody) << " "
-	    << millidiff (pdummyconnection->entering_WaitingEOW,	pdummyconnection->entering_NowTreatRequest) << " "
-	    << millidiff (pdummyconnection->ending_WaitingEOW,		pdummyconnection->entering_WaitingEOW) << " "
+	    << millidiff (httppconn->entering_ReadBody,		httppconn->entering_HTTPRequestLine) << " "
+	    << millidiff (httppconn->entering_NowTreatRequest,	httppconn->entering_ReadBody) << " "
+	    << millidiff (httppconn->entering_WaitingEOW,	httppconn->entering_NowTreatRequest) << " "
+	    << millidiff (httppconn->ending_WaitingEOW,		httppconn->entering_WaitingEOW) << " "
 	    
-	    << pdummyconnection->getname()
+	    << httppconn->getname()
 	    << " - - "	    // JDJDJDJD here stuff about authentication
 	    << "[" << setfill('0')
 	       << setw(2) << tm.tm_mday << '/'
@@ -428,7 +431,7 @@ namespace bulkrays {
 	       << setw(2) << tm.tm_sec << "] \""
 	    << method << " " << host << req_uri << " " << version << "\" "
 	    << statuscode << " "
-	    << (int)(pdummyconnection->gettotw() - pdummyconnection->lastbwindex)
+	    << (int)(httppconn->gettotw() - httppconn->lastbwindex)
 	    << " \"";
 
 	MimeHeader::iterator mi = mime.find("Referer");
@@ -454,9 +457,9 @@ namespace bulkrays {
 //		else
 //		    logger (string(""));
 //	//	if (msg == NULL)
-//	//	    cout << pdummyconnection->getname() << " " << method << " " << host << req_uri << " " << statuscode << endl;
+//	//	    cout << httppconn->getname() << " " << method << " " << host << req_uri << " " << statuscode << endl;
 //	//	else
-//	//	    cout << pdummyconnection->getname() << " " << method << " " << host << req_uri << " " << statuscode << " " << msg << endl;
+//	//	    cout << httppconn->getname() << " " << method << " " << host << req_uri << " " << statuscode << " " << msg << endl;
 //	    }
 
     char * rfc1123date_offset (char *buf, time_t offset) {
@@ -501,7 +504,7 @@ static const char* monthname[] = {
 	    return;
 	}
 	char buf[40];
-	ostream &cout = *(pdummyconnection->out) ;
+	ostream &cout = *(httppconn->out) ;
 
 	const char * outputerror;
 	if (errormsg == NULL) {
@@ -586,7 +589,7 @@ static const char* monthname[] = {
 	return 0;
     }
 
-    int ReturnError::output (ostream &cout, HTTPRequest &req) {
+    TReqResult ReturnError::output (ostream &cout, HTTPRequest &req) {
 	stringstream body;
 
 	if (req.errormsg == NULL) {
@@ -638,7 +641,7 @@ static const char* monthname[] = {
 	req.publish_header();
 	cout << body.str();
 
-	return 0;
+	return TRCompleted;
     }
 
     int ReturnError::shortcuterror (ostream &cout, HTTPRequest &req, int statuscode, const char* message /*=NULL*/, const char* submessage /*=NULL*/, bool closeconnection) {
@@ -648,7 +651,7 @@ static const char* monthname[] = {
 	return e;
     }
 
-    int TreatRequest::error (ostream &cout, HTTPRequest &req, int statuscode, const char* message /*=NULL*/, const char* submessage /*=NULL*/, bool closeconnection) {
+    TReqResult TreatRequest::error (ostream &cout, HTTPRequest &req, int statuscode, const char* message /*=NULL*/, const char* submessage /*=NULL*/, bool closeconnection) {
 	req.errormsg = message, req.suberrormsg = submessage, req.statuscode = statuscode;
 	return returnerror.output (cout, req);
     }
@@ -708,7 +711,47 @@ errlog() << "lastbwindex = " << lastbwindex << " shouldn't it be 0 ???" << endl;
     }
 
     ostream& HTTPRequest::errlog (void) {
-	return pdummyconnection->errlog();
+	return httppconn->errlog();
+    }
+
+    const char * charitnull = "NULL";
+    const char * boolittrue = "TRUE";
+    const char * boolitfalse = "FALSE";
+
+    inline const char * charit (const char *p) { return (p == NULL) ? charitnull : p; }
+    inline const char * boolit (bool b) { return b ? boolittrue : boolitfalse; }
+
+#define BEGIN_TERM_IDENT  "\033[33m"
+#define BEGIN_TERM_VALUE  "\033[36m"
+#define END_TERM_IDENT  "\033[m"
+
+    ostream& HTTPRequest::dump (ostream& out) const {
+	const char  *I = BEGIN_TERM_IDENT,
+		    *V = BEGIN_TERM_VALUE,
+		    *E = END_TERM_IDENT;
+      return out
+//	<< I << "httppconn -> "   << E << "= " << E << V << (*httppconn) << E << endl
+	<< I << "statuscode "            << E << "= " << E << V << statuscode << E << endl
+	<< I << "errormsg "              << E << "= " << E << V << charit(errormsg) << E << endl
+	<< I << "suberrormsg "           << E << "= " << E << V << charit(errormsg) << E << endl
+	<< I << "expires_set "           << E << "= " << E << V << boolit(expires_set) << E << endl
+	<< I << "headerpublished "       << E << "= " << E << V << boolit(headerpublished) << E << endl
+	<< I << "method "                << E << "= " << E << V << method << E << endl
+	<< I << "host "                  << E << "= " << E << V << host << E << endl
+        << I << "req_uri "               << E << "= " << E << V << req_uri << E << endl
+        << I << "document_uri "          << E << "= " << E << V << document_uri << E << endl
+        << I << "version "               << E << "= " << E << V << version << E << endl
+        << I << "reqbodylen "            << E << "= " << E << V << reqbodylen << E << endl
+        << I << "readbodybytes "         << E << "= " << E << V << readbodybytes << E << endl
+             << "req_body NOTDUMPED" << endl
+	     << endl
+	     << ostreamMap(outmime,        BEGIN_TERM_IDENT "outmime"         END_TERM_IDENT) << endl
+	     << ostreamMap(mime,           BEGIN_TERM_IDENT "mime"            END_TERM_IDENT) << endl
+//	     << ostreamMap(req_fields,     BEGIN_TERM_IDENT "req_fields"     END_TERM_IDENT) << endl
+	     << ostreamMap(uri_fields,     BEGIN_TERM_IDENT "uri_fields"     END_TERM_IDENT) << endl
+	     << ostreamMap(body_fields,    BEGIN_TERM_IDENT "body_fields"    END_TERM_IDENT) << endl
+//	     << ostreamMap(content_fields, BEGIN_TERM_IDENT "content_fields" END_TERM_IDENT) << endl
+	;
     }
 
     bool set_default_host (string const &hostname) {
@@ -742,16 +785,31 @@ errlog() << "lastbwindex = " << lastbwindex << " shouldn't it be 0 ???" << endl;
 	request.readbodybytes = 0;
     }
 
+    void HTTPResponse::compute_bodylen (void) {
+// errlog() << "HttppConn::compute_reqbodylen" << endl;
+	MimeHeader::iterator mi = mime.find("Content-Length");
+	if (mi == mime.end()) {
+	    reqbodylen = -1;	// JDJDJDJD tricky, need to be checked
+	    readbodybytes = 0;
+	    return;
+	}
+	reqbodylen = atoi (mi->second.c_str());
+	readbodybytes = 0;
+    }
+
     void HttppConn::lineread (void) {
 	size_t p, q, len;
 	MimeHeader::iterator mi;
 
 	switch (state) {
-	    case WaitingEOW:
+
+	    case TreatPending:
+	    case WaitingEOW:	// --------------------------------------------------------------------
 		errlog() << "received some stuff before end of transmission occured ?!" << endl;
 errlog() << "some garbage while waiting eow : {" << bufin << "}" << endl;
 		break;
-	    case HTTPRequestLine:
+
+	    case HTTPRequestLine:   // ----------------------------------------------------------------
 		cork();
 		gettimeofday(&entering_HTTPRequestLine, NULL);
 		p = bufin.find (' ');
@@ -805,7 +863,7 @@ if (debugearlylog) errlog() << endl;
 		mimeheadername.clear();		// JDJDJDJD this is rather tricky
 		break;
     
-	    case MIMEHeader:
+	    case MIMEHeader:	// --------------------------------------------------------------------
 		if (bufin.empty()) {
 		    compute_reqbodylen ();
 		    if (request.reqbodylen > 0) {
@@ -834,7 +892,8 @@ if (debugparsereq) {
 		    flushandclose();
 		    break;
 		}
-	    case NextMIMEHeader:
+
+	    case NextMIMEHeader:    // ----------------------------------------------------------------
 		len = bufin.size();
 		if (len == 0) {
 		    if (!mimeheadername.empty()) {
@@ -909,10 +968,11 @@ if (debugparsereq) {
 		state = NextMIMEHeader;
 		break;
 
-	    case ReadBody:
+	    case ReadBody:  // ------------------------------------------------------------------------
 		request.req_body += bufin;
 		request.readbodybytes += bufin.size();
 		if (request.readbodybytes >= request.reqbodylen) {
+// JDJDJDJD we should not complain if the value matches !
 		    errlog() << "ReadBody : " << request.readbodybytes << " read, " << request.reqbodylen << " schedulled.  diff = " << request.readbodybytes-request.reqbodylen << endl;
 		    mi = request.mime.find ("Content-Type");
 		    if (mi == request.mime.end()) {
@@ -1085,7 +1145,7 @@ if (debugparsereq) errlog() << "we've a form post !" << endl;
 		}
 		break;
 
-	    case NowTreatRequest:
+	    case NowTreatRequest:   // ----------------------------------------------------------------
 		break;
 	}
 // errlog << "state=" << state << " : request.reqbodylen=" << request.reqbodylen << " request.readbodybytes=" << request.readbodybytes << endl;
@@ -1141,11 +1201,23 @@ if (debugparsereq) {
 		flushandclose();
 		return;
 	    }
-	    treatrequest->output ((*out), request);
-	    gettimeofday(&entering_WaitingEOW, NULL);
-	    state = WaitingEOW;
-	    flush();
+	    switch (treatrequest->output ((*out), request)) {
+		case TRCompleted:
+		    gettimeofday(&entering_WaitingEOW, NULL);	// ibid finishtreatment (void)
+		    state = WaitingEOW;
+		    flush();
+		    break;
+		case TRPending:
+		    // JDJDJDJD sonme stuff missing here, probably ...
+		    break;
+	    }
 	}
+    }
+
+    void HttppConn::finishtreatment (void) {
+	gettimeofday(&entering_WaitingEOW, NULL);
+	state = WaitingEOW;
+	flush();
     }
 
     void HttppConn::reconnect_hook (void) {
@@ -1286,6 +1358,315 @@ for (i=0 ; i<256 ; i++) {
 	return found;
     }
 
+
+    ostream& HTTPClient::shorterrlog (void) {
+	time_t t;
+	time (&t);
+	struct tm tm;
+	gmtime_r(&t, &tm);
+
+	return cerr 
+	    << "[" << setfill('0')
+	       << setw(2) << tm.tm_mday << '/'
+	       << setw(2) << tm.tm_mon+1 << '/'
+	       << setw(4) << tm.tm_year + 1900 << ':'
+	       << setw(2) << tm.tm_hour << ':'
+	       << setw(2) << tm.tm_min << ':'
+	       << setw(2) << tm.tm_sec << "] \""
+	    << "[" << fd << " : : HTTPClient::" << prevhost << "] ";
+    }
+
+    ostream& HTTPClient::errlog (void) {
+	return shorterrlog()
+	    << response.method << " ("
+	    << response.host << ") "
+	    << response.document_uri
+	    << " ";
+    }
+
+    HTTPClient::HTTPClient (bool keepalive)
+      : BufConnection (-1, true),
+	state(creation),
+	keepalive(keepalive),
+	timeout (0),
+	ascb (NULL),
+	callbackvalue (-1)
+    {	
+    }
+
+    HTTPClient::~HTTPClient (void) {
+    }
+
+// http://user:pass@tagazon.tragacouet.cn:80/thepath/part/ofthe/url?thefieldspart=ofthequery&b=0
+//        p        r                        q 
+//        p         r                       q 
+
+    bool HTTPClient::httpget (const string &url, ASyncCallBack *ascb, int callbackvalue) {
+	HTTPClient::ascb = ascb;
+	HTTPClient::callbackvalue = callbackvalue;
+	bool userpass = false;
+	string user;
+	string pass;
+	string host;
+	int port = 80;
+	string uripath;
+
+	size_t p = 0;
+	string fqdnpart;
+	if (url.substr (0, 7) == "http://")
+	    p = 7;
+
+	size_t q = url.find ('/', p);
+	size_t r = url.rfind ('@', q);
+	if ((r == string::npos) || (r < p)) {	// no userpass
+	    r = p;
+	} else {    // we have a userpass
+	    userpass = true;
+	    size_t userend = url.find_first_of (":@", p);
+	    if ((userend != string::npos) && (userend > r))
+		userend = r;
+	    user = url.substr (p, userend-p);
+	    if (userend < r)
+		pass = url.substr (userend+1, r-userend-1);
+	    r++;
+	}
+	size_t portbegin = url.find_first_of (":/", r);
+	if ((portbegin != string::npos) && (portbegin != q)) {
+	    port = atoi (url.substr(portbegin+1, (q==string::npos)? string::npos : portbegin+1 - q).c_str());
+	    host = url.substr (r, portbegin-r);
+	} else {
+	    host = url.substr (r, (q==string::npos)? string::npos : q-r);
+	}
+	
+	if (q != string::npos)
+	    uripath = url.substr(q);
+
+
+cerr <<        setfill (' ') << setw(45) << url
+     << "|" << setfill (' ') << (userpass ? " # " : "   " )
+     << "|" << setfill (' ') << setw(10) << user
+     << "|" << setfill (' ') << setw(10) << pass
+     << "|" << setfill (' ') << setw(35) << host
+     << "|" << setfill (' ') << setw(3) << port
+     << "|" << uripath << "|" << endl;
+
+	// MISSING : checking keepalive value and if host is the same and if the connection is ok ...
+
+////// if we wanted to make ipv4 / fqdn discrimination (from rfc2396.txt)
+//	size_t lastdot = host.rfind('.');
+//	// IPV4 discriminator
+//	if ((lastdot != npos) && (lastdot < host.size()-1) && (isdigit(host[lastdot+1]))) {
+//	    
+//	}
+
+	// JDJDJDJD should switch to some non-blocking connect !!!!
+	// ideally inherited from a special Connection parent ???
+	int propfd = init_connect (host.c_str(), port);
+
+	if (propfd < 0)
+	    return false;
+
+	fd = propfd;
+	(*out)	<< "GET " << uripath << " HTTP/1.1" << endl
+		<< "Accept: */*" << endl
+		<< "Host: " << host << endl
+		<< "Connection: " << "close" << endl	    // JDJDJDJD to be fixed
+		<< endl;
+
+	flush();
+	state = waitingHTTPline1;
+
+	return true;
+    }
+
+    void HTTPClient::lineread (void) {
+	size_t len, p;
+	switch (state) {
+	    case creation:
+		cerr << "HTTPClient::lineread receiving garbage during creation !" << endl;
+		break;
+	    case waitingHTTPline1: {
+		    size_t p = bufin.find (' ');
+		    if (p == string::npos) {
+			cerr << "HTTPClient::lineread malformed http answer" << endl;
+// JDJDJDJD should close the connection here
+			break;
+		    }
+		    if (bufin.substr (0, p) != "HTTP/1.1") {
+			cerr << "HTTPClient::lineread unknown http variant : [" << bufin.substr (0, p) << "]" << endl;
+// JDJDJDJD should close the connection here
+			break;
+		    }
+		    if (p+1 > bufin.size()) {
+			cerr << "HTTPClient::lineread missing http return code !" << endl;
+// JDJDJDJD should close the connection here
+			break;
+		    }
+
+		    response.statuscode = atoi (bufin.substr(p+1).c_str());
+
+cerr << bufin << endl;
+		    state = mimeheadering;
+		}
+		break;
+
+	    case mimeheadering:
+		if (bufin.empty()) {
+		    response.compute_bodylen ();
+		    if (response.reqbodylen > 0) {
+			state = docreceiving;
+			setrawmode();
+		    } else {
+			state = waiting_cbtreat;
+		    }
+		    break;
+		}
+		if (!isalnum(bufin[0])) {
+		    cerr << "HTTPClient::readline : wrong mime header-name (bad starting char ?) : " << bufin << endl;
+// JDJDJDJD should close the connection here
+		    break;
+		}
+
+	    case nextmimeheadering:
+		len = bufin.size();
+		if (len == 0) {
+		    if (!mimeheadername.empty()) {
+			response.mime[mimeheadername] = mimevalue;   // JDJDJDJD should check for pre-existing mime entry
+		    }
+		    response.compute_bodylen ();
+		    if (response.reqbodylen > 0) {
+			state = docreceiving;
+			setrawmode();
+		    } else {
+			state = waiting_cbtreat;
+		    }
+		    break;
+		}
+		p = 0;
+		if ((bufin[p] == ' ') || (bufin[p] == 9)) {	// are we on a continuation of mime value ?
+		    while ((p < len) && ((bufin[p] == ' ') || (bufin[p] == 9)))
+			p++;
+		    while (p < len)
+			mimevalue += bufin[p++];
+		
+		    response.mime[mimeheadername] = mimevalue;	// JDJDJDJD should check for pre-existing mime entry
+// errlog() << mimeheadername << " = " << mimevalue << endl;
+		    mimevalue.clear();
+		    mimeheadername.clear();
+		    state = nextmimeheadering;
+		    break;
+		}
+		if (!mimeheadername.empty()) {
+		    response.mime[mimeheadername] = mimevalue;   // JDJDJDJD should check for pre-existing mime entry
+// errlog() << mimeheadername << " = " << mimevalue << endl;
+		}
+		p = bufin.find (':');
+		if (p == string::npos) {
+		    errlog() << "wrong mime header-name (missing ':' ?) : " << bufin << endl;
+		    cerr << "HTTPClient::lineread missing http return code !" << endl;
+// JDJDJDJD should close the connection here
+		    break;
+		}
+		if (!isalnum(bufin[0])) {
+		    errlog() << "wrong mime header-name (bad starting char ?) : " << bufin << endl;
+		    cerr << "HTTPClient::lineread missing http return code !" << endl;
+// JDJDJDJD should close the connection here
+		    break;
+		}
+		mimeheadername = bufin.substr (0, p);
+		mimevalue.clear();
+		p++;
+		while ((p < len) && ((bufin[p] == ' ') || (bufin[p] == 9)))
+		    p++;
+		while (p < len) {
+		    mimevalue += bufin[p++];
+		}
+		state = nextmimeheadering;
+		break;
+
+	    case docreceiving:
+		response.req_body += bufin;
+		response.readbodybytes += bufin.size();
+		if (response.readbodybytes >= response.reqbodylen) {
+errlog() << "ReadBody : " << response.readbodybytes << " read, " << response.reqbodylen << " schedulled.  diff = " << response.readbodybytes-response.reqbodylen << endl;
+cerr << ostreamMap(response.mime,           BEGIN_TERM_IDENT "mime"            END_TERM_IDENT) << endl;
+		    setlinemode();
+
+		    if (ascb != NULL)
+			ascb->callback (callbackvalue);
+		    state = waiting_cbtreat;
+		    break;
+		}
+		break;
+
+	    case waiting_cbtreat:
+		break;
+
+	    default:
+		break;
+	}
+	
+    }
+
+
+// ---------------------- TO BE REMOVED ------------------------
+// ---------------------- TO BE REMOVED ------------------------
+
+class SillyHttpGet : public ASyncCallBack {
+	HTTPClient *hc;
+	string theurl;
+    public:
+	SillyHttpGet (string url) :
+	    theurl(url)
+	{
+	    hc = new HTTPClient ();
+	    if (hc == NULL) {
+cerr << "complain !" << endl;
+		return;
+	    }
+
+cerr << "here" << endl;
+	    hc->httpget (url, this, 42);
+cerr << theurl << endl;
+	    hc->register_into_pool (&bulkrayscpool);
+cerr << "there" << endl;
+	}
+	virtual int callback (int v) {
+	    if (v == 42) {
+		if (hc == NULL) return -1;
+		cerr << "--------------------" << endl
+		     << theurl << endl
+		     << "--------------------" << endl
+		     << hc->response.req_body << "<--------" << endl
+		     << "--------------------" << endl;
+		hc->deregister_from_pool();
+		free (hc);
+		hc = NULL;
+	    }
+	    return 0;
+	}
+	virtual ~SillyHttpGet (void) {
+cerr << "destruction" << endl;
+	}
+};
+
+
+// ---------------------- TO BE REMOVED ------------------------
+// ---------------------- TO BE REMOVED ------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 } // namespace bulkrays
 
 using namespace std;
@@ -1305,8 +1686,9 @@ int main (int nb, char ** cmde) {
 	if (strncmp (cmde[i], "--help", 6) == 0) {
 	    cout << cmde[0] << "   \\" << endl
 			    << "      [--bind=[address][:port]]  \\" << endl
-			    << "      [--user=[user][:group]]  \\" << endl
-			    << "      [--access_log=filename]" << endl
+			    << "      [--user=[user][:group]]    \\" << endl
+			    << "      [--access_log=filename]    \\" << endl
+			    << "      [--earlylog]               \\" << endl
 			    << "      [--console]" << endl;
 	    return 0;
 	} else if (strncmp (cmde[i], "--bind=", 7) == 0) {
@@ -1407,10 +1789,26 @@ int main (int nb, char ** cmde) {
     SillyConsoleOut *psillyconsolestdout = NULL;
     SillyConsoleIn *psillyconsolestdin = NULL;
     if (activatettyconsole) {
-	psillyconsolestdout = new SillyConsoleOut (1);
-	psillyconsolestdin = new SillyConsoleIn (0, psillyconsolestdout, &bulkrayscpool);
-	bulkrayscpool.push (psillyconsolestdout);
-	bulkrayscpool.push (psillyconsolestdin);
+	{   int flags;	// JDJDJDJD this part could be avoided if Connection object could be marked "not for reading" in ConnectionPool
+	    if ((flags = fcntl (1, F_GETFL, 0)) < 0) {
+		cerr << "fcntl F_GETFL failed on stdout" << endl;
+	    } else {
+		flags |= O_NONBLOCK;
+		if (fcntl (1, F_SETFL, flags) < 0) {
+		    cerr << "could not set O_NONBLOCK on stdout" << endl;
+		}
+	    }
+	}
+	if ((psillyconsolestdout = new SillyConsoleOut (1)) == NULL) {
+	    cerr << "could not allocate SillyConsoleOut" << endl;
+	} else {
+	    psillyconsolestdout->register_into_pool (&bulkrayscpool, false);
+	}
+	if ((psillyconsolestdin = new SillyConsoleIn (0, psillyconsolestdout, &bulkrayscpool)) == NULL) {
+	    cerr << "could not allocate SillyConsoleIn" << endl;
+	} else {
+	    bulkrayscpool.push (psillyconsolestdin);
+	}
     }
     
     struct timeval timeout;
@@ -1420,7 +1818,37 @@ int main (int nb, char ** cmde) {
     status_message_globalinit ();
     bootstrap_global (bulkrays::StartUp);
 
+HTTPClient hc;
+
+//    hc.httpget ("http://www.univ-lyon1.fr");
+//    hc.httpget ("http://www.univ-lyon1.fr/");
+//    hc.httpget ("http://www.univ-lyon1.fr/blabla");
+//    hc.httpget ("http://jd:test@www.univ-lyon1.fr/blabla");
+//    hc.httpget ("http://jd:@www.univ-lyon1.fr/blabla");
+//    hc.httpget ("http://jd@www.univ-lyon1.fr/blabla");
+//    hc.httpget ("http://www.univ-lyon1.fr:82/blabla");
+//    hc.httpget ("http://jd@www.univ-lyon1.fr:82/blabla");
+//    hc.httpget ("http://jd:test@www.univ-lyon1.fr:82/blabla");
+//
+//    hc.httpget ("www.univ-lyon1.fr");
+//    hc.httpget ("www.univ-lyon1.fr/");
+//    hc.httpget ("www.univ-lyon1.fr/blabla");
+//    hc.httpget ("jd:test@www.univ-lyon1.fr/blabla");
+//    hc.httpget ("jd:@www.univ-lyon1.fr/blabla");
+//    hc.httpget ("jd@www.univ-lyon1.fr/blabla");
+//    hc.httpget ("www.univ-lyon1.fr:82/blabla");
+//    hc.httpget ("jd@www.univ-lyon1.fr:82/blabla");
+//    hc.httpget ("jd:test@www.univ-lyon1.fr:82/blabla");
+
+
+////    hc.httpget ("http://bulkrays2.nkdn.fr/fiches/TODO");
+////    hc.register_into_pool (&bulkrayscpool);
+
+
+    SillyHttpGet voila("http://bulkrays2.nkdn.fr/fiches/TODO");
+
     bulkrayscpool.select_loop (timeout);
+
 
     if (psillyconsolestdin != NULL) {
 	psillyconsolestdin->deregister_from_pool();	// so that some other stuff can still be done on stdin/out

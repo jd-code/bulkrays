@@ -170,7 +170,7 @@ namespace simplefmap {
 
 	~FMap_TreatRequest () {}
 
-	virtual int output (ostream &cout, HTTPRequest &req) {
+	virtual TReqResult output (ostream &cout, HTTPRequest &req) {
 	    if (req.method != "GET") {
 		req.set_relative_expires (60);
 		return error (cout, req, 405);	// JDJDJDJD The response MUST include an Allow header containing a list of valid methods for the requested resource. 
@@ -457,12 +457,12 @@ req.errlog() << "simplefmap::output opendir(" << canonfname << " ) gave error " 
 		    munmap (fmap, statbuf.st_size);
 		    close (f);
 		}
-		req.pdummyconnection->pushdummybuffer (mmbuf);
+		req.httppconn->pushdummybuffer (mmbuf);
 
 	    }
 	    free (canonfname);
 
-	    return 0;
+	    return TRCompleted;
 	}
     };
 

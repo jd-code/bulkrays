@@ -75,7 +75,7 @@ namespace bulkrays {
     class HTTPRequest
     {
 	public:
-	    HttppConn *pdummyconnection;
+	    HttppConn *httppconn;
 	    int statuscode;
 	    const char* errormsg;
 	    const char* suberrormsg;
@@ -137,7 +137,7 @@ static ostream * clog;
 	      content_fields.clear();
 	    }
 	    HTTPRequest (HttppConn &dc) :
-		pdummyconnection(&dc),
+		httppconn(&dc),
 		statuscode(0),
 		errormsg(NULL),
 		suberrormsg(NULL),
@@ -147,7 +147,13 @@ static ostream * clog;
 		initoutmime ();
 	    }
 	    ~HTTPRequest ();
+
+	    ostream& dump (ostream& out) const;
     };
+
+    inline ostream& operator<< (ostream& out, HTTPRequest const &op) {
+	return op.dump (out);
+    }
 
     class BulkRaysCPool : public ConnectionPool {
 	protected:
@@ -230,12 +236,17 @@ static ostream * clog;
     BULKRAYS_H_SCOPE
     map <int,const char *> status_message;
 
+    typedef enum {
+	TRPending,
+	TRCompleted
+    } TReqResult;
+
     class TreatRequest {
 	public:
 	    TreatRequest () {}
 	    ~TreatRequest () {}
-	    virtual int output (ostream &cout, HTTPRequest &req) = 0;
-	    int error (ostream &cout, HTTPRequest &req, int statuscode, const char* message=NULL, const char* submessage=NULL, bool closeconnection=false);
+	    virtual TReqResult output (ostream &cout, HTTPRequest &req) = 0;
+	    TReqResult error (ostream &cout, HTTPRequest &req, int statuscode, const char* message=NULL, const char* submessage=NULL, bool closeconnection=false);
 	    inline int errorandclose (ostream &cout, HTTPRequest &req, int statuscode, const char* message=NULL, const char* submessage=NULL) {
 		return error (cout, req, statuscode, message, submessage, true);
 	    }
@@ -247,7 +258,7 @@ static ostream * clog;
 	    ReturnError () : TreatRequest (), closeconnection(true) {}
 	    ~ReturnError () {}
 	    
-	    virtual int output (ostream &cout, HTTPRequest &req);
+	    virtual TReqResult output (ostream &cout, HTTPRequest &req);
 	    int shortcuterror (ostream &cout, HTTPRequest &req, int statuscode, const char* message=NULL, const char* submessage=NULL, bool closeconnection=true);
     };
 
@@ -312,7 +323,8 @@ static int idnum;
 //		MessageBody,		// starting the datas following mime header (Content-Length troubles)
 		ReadBody,		// buffering the body of the message itself
 		NowTreatRequest,	// all message suposely read, we treat ...
-		WaitingEOW		// the treatment is finished w're waiting for the end of normal transmission
+		TreatPending,		// we're waiting a call-back from treatment that will finish pushing the output
+		WaitingEOW		// the treatment is finished we're waiting for the end of normal transmission
 	    } State;
 	    State state;
 
@@ -338,6 +350,8 @@ static int idnum;
 	    virtual void poll (void) {};
 	    virtual void eow_hook (void);
 	    virtual void reconnect_hook (void);
+
+	    void finishtreatment (void);
     };
 #ifdef BULKRAYS_H_GLOBINST
 int HttppConn::idnum = 0;
@@ -362,6 +376,122 @@ int HttppConn::idnum = 0;
 	    virtual void poll (void) {}
     };
 
+    class ASyncCallBack {
+	public:
+	    ASyncCallBack () {}
+	    virtual int callback (int v) = 0;
+    };
+
+    class HTTPResponse
+    {
+	public:
+	    // HttppConn *httppconn;
+	    int statuscode;
+	    const char* errormsg;
+	    const char* suberrormsg;
+	    // MimeHeader outmime;
+	    // bool expires_set;
+	    // bool headerpublished;
+
+	    string method;
+	    string host;
+	    string req_uri;
+	    string document_uri;
+	    string version;
+	    MimeHeader mime;
+
+
+	    size_t reqbodylen;
+	    size_t readbodybytes;
+	    string req_body;
+
+//	    FieldsMapR	req_fields;
+//	    FieldsMap	uri_fields,
+//			body_fields;
+//	    map <string, BodySubEntry> content_fields;
+
+static ostream * clog;
+
+	    void logger (void);
+
+	    ostream& errlog (void);
+
+//	    void set_relative_expires (time_t seconds);
+//	    void set_relative_expires_jitter (size_t seconds, float jitter = 7.0);
+//	    void set_contentlength (size_t l);
+//	    void publish_header (void);
+
+//	    void initoutmime (void);
+/*
+	    void clear (void) {
+		 expires_set = false;
+	     headerpublished = false;
+		      method.clear();
+			host.clear();
+		     req_uri.clear();
+		document_uri.clear();
+		     version.clear();
+			mime.clear();
+		  statuscode = 0;
+		    errormsg = "OK";
+		 suberrormsg = "";
+		initoutmime ();
+
+		  reqbodylen = 0;
+	       readbodybytes = 0;
+		    req_body.clear();
+
+		  req_fields.clear();
+		  uri_fields.clear();
+		 body_fields.clear();
+	      content_fields.clear();
+	    }
+*/
+	    HTTPResponse () :
+		statuscode(0),
+		errormsg(NULL),
+		suberrormsg(NULL)
+		{}
+	    ~HTTPResponse () {}
+	    void compute_bodylen (void);
+
+	    ostream& dump (ostream& out) const;
+    };
+
+
+    class HTTPClient : public BufConnection {
+	typedef enum {
+	    creation,
+	    waitingHTTPline1,
+	    mimeheadering,
+	    nextmimeheadering,
+	    docreceiving,
+	    waiting_cbtreat
+	} HTTPClientStatus;
+	protected:
+	    HTTPClientStatus state;
+	    bool keepalive;
+	    time_t timeout;
+	    ASyncCallBack *ascb;
+	    int callbackvalue;
+	    string prevhost;
+	    stringstream raw;
+	    string cururl;
+
+	    string mimevalue, mimeheadername;
+
+	public:
+	    HTTPResponse response;
+
+	public:
+	    HTTPClient (bool keepalive = true);
+	    virtual ~HTTPClient (void);
+	    bool httpget (const string &url, ASyncCallBack *ascb = NULL, int callbackvalue = -1);
+	    virtual void lineread (void);
+	    virtual string getname (void) {return cururl;}
+	    ostream& errlog (void);
+	    ostream& shorterrlog (void);
+    };
 }
 
 #endif // INCL_BULKRAYS_H
