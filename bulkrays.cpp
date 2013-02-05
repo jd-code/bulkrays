@@ -1818,7 +1818,7 @@ int main (int nb, char ** cmde) {
     status_message_globalinit ();
     bootstrap_global (bulkrays::StartUp);
 
-HTTPClient hc;
+// HTTPClient hc;
 
 //    hc.httpget ("http://www.univ-lyon1.fr");
 //    hc.httpget ("http://www.univ-lyon1.fr/");
@@ -1845,7 +1845,7 @@ HTTPClient hc;
 ////    hc.register_into_pool (&bulkrayscpool);
 
 
-    SillyHttpGet voila("http://bulkrays2.nkdn.fr/fiches/TODO");
+//    SillyHttpGet voila("http://bulkrays2.nkdn.fr/fiches/TODO");
 
     bulkrayscpool.select_loop (timeout);
 
