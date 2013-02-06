@@ -32,6 +32,13 @@ bulkrays:
     rendre obligatoire les champs de caching
     cookies ?
 
+
+HTTPClient
+    POST
+    User-Agent
+    additionnal mime entries
+    keepalive to be finished
+
 simplefmap:
     [done] lire les correspondances terminaisons de fichier -> mime
     valider que le fopen + mmap ne change pas la date du fichier et qu'il est impossible d'ecrire !!!

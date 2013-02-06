@@ -138,7 +138,27 @@ namespace bulkrays {
 	}
     }
 
-
+    void urlencode (ostream & cout, const string &s) {
+static const char* hex="0123456789ABCDEF";
+	size_t i, l=s.size();
+	for (i=0 ; i<l ; i++) {
+	    switch (s[i]) {
+		default:
+		    if (isascii(s[i]) && (!iscntrl(s[i]))) {
+			cout << s[i];
+			break;
+		    }
+		case '=':
+		case '+':
+		case '&':
+		case ' ':
+		    cout << '%'
+			 << hex[ (((unsigned char)s[i]) & 0xf0) >> 8 ]
+			 << hex[ (((unsigned char)s[i]) & 0x0f)      ];
+		    break;
+	    }
+	}
+    }
 
 
     void FieldsMapR::import (FieldsMap const &m) {
@@ -1401,15 +1421,16 @@ for (i=0 ; i<256 ; i++) {
 //        p        r                        q 
 //        p         r                       q 
 
-    bool HTTPClient::httpget (const string &url, ASyncCallBack *ascb, int callbackvalue) {
-	HTTPClient::ascb = ascb;
-	HTTPClient::callbackvalue = callbackvalue;
-	bool userpass = false;
-	string user;
-	string pass;
-	string host;
-	int port = 80;
-	string uripath;
+    void urlsplit (const string &url,
+	  bool &userpass,
+	string &user,
+	string &pass,
+	string &host,
+	   int &port,
+	string &uripath
+    ) {
+	userpass = false;
+	port = 80;
 
 	size_t p = 0;
 	string fqdnpart;
@@ -1441,7 +1462,6 @@ for (i=0 ; i<256 ; i++) {
 	if (q != string::npos)
 	    uripath = url.substr(q);
 
-
 cerr <<        setfill (' ') << setw(45) << url
      << "|" << setfill (' ') << (userpass ? " # " : "   " )
      << "|" << setfill (' ') << setw(10) << user
@@ -1449,6 +1469,18 @@ cerr <<        setfill (' ') << setw(45) << url
      << "|" << setfill (' ') << setw(35) << host
      << "|" << setfill (' ') << setw(3) << port
      << "|" << uripath << "|" << endl;
+
+    }
+
+    bool HTTPClient::http_get (const string &url, ASyncCallBack *ascb, int callbackvalue) {
+	HTTPClient::ascb = ascb;
+	HTTPClient::callbackvalue = callbackvalue;
+	bool userpass;
+	string user, pass, host, uripath;
+	int port;
+
+	urlsplit (url, userpass, user, pass, host, port, uripath);
+
 
 	// MISSING : checking keepalive value and if host is the same and if the connection is ok ...
 
@@ -1468,10 +1500,68 @@ cerr <<        setfill (' ') << setw(45) << url
 
 	fd = propfd;
 	(*out)	<< "GET " << uripath << " HTTP/1.1" << endl
-		<< "Accept: */*" << endl
-		<< "Host: " << host << endl
-		<< "Connection: " << "close" << endl	    // JDJDJDJD to be fixed
+		<< "Accept: */*" << endl;
+	if (port != 80)
+	    (*out) << "Host: " << host << ':' << port << endl;
+	else
+	    (*out) << "Host: " << host << endl;
+	(*out)  << "Connection: " << "close" << endl	    // JDJDJDJD to be fixed
 		<< endl;
+
+	flush();
+	state = waitingHTTPline1;
+
+	return true;
+    }
+
+    bool HTTPClient::http_post_urlencoded (const string &url, FieldsMap& vals, ASyncCallBack *ascb, int callbackvalue) {
+	HTTPClient::ascb = ascb;
+	HTTPClient::callbackvalue = callbackvalue;
+	bool userpass;
+	string user, pass, host, uripath;
+	int port;
+
+	urlsplit (url, userpass, user, pass, host, port, uripath);
+
+
+	// MISSING : checking keepalive value and if host is the same and if the connection is ok ...
+
+////// if we wanted to make ipv4 / fqdn discrimination (from rfc2396.txt)
+//	size_t lastdot = host.rfind('.');
+//	// IPV4 discriminator
+//	if ((lastdot != npos) && (lastdot < host.size()-1) && (isdigit(host[lastdot+1]))) {
+//	    
+//	}
+
+	// JDJDJDJD should switch to some non-blocking connect !!!!
+	// ideally inherited from a special Connection parent ???
+	int propfd = init_connect (host.c_str(), port);
+
+	if (propfd < 0)
+	    return false;
+
+	stringstream s;
+	FieldsMap::const_iterator mi;
+	for (mi=vals.begin() ; mi!=vals.end() ; mi++) {
+	    if (mi != vals.begin())
+		s << '&';
+	    urlencode (s, mi->first);
+	    s << '=';
+	    urlencode (s, mi->second);
+	}
+
+	fd = propfd;
+	(*out)	<< "POST " << uripath << " HTTP/1.1" << endl
+		<< "Accept: */*" << endl;
+	if (port != 80)
+	    (*out) << "Host: " << host << ':' << port << endl;
+	else
+	    (*out) << "Host: " << host << endl;
+	(*out)  << "Connection: " << "close" << endl	    // JDJDJDJD to be fixed
+		<< "Content-Type: application/x-www-form-urlencoded" << endl
+		<< "Content-Length: " << s.str().size() << endl
+		<< endl
+		<< s.str();
 
 	flush();
 	state = waitingHTTPline1;
@@ -1626,7 +1716,7 @@ cerr << "complain !" << endl;
 	    }
 
 cerr << "here" << endl;
-	    hc->httpget (url, this, 42);
+	    hc->http_get (url, this, 42);
 cerr << theurl << endl;
 	    hc->register_into_pool (&bulkrayscpool);
 cerr << "there" << endl;
@@ -1646,6 +1736,45 @@ cerr << "there" << endl;
 	    return 0;
 	}
 	virtual ~SillyHttpGet (void) {
+cerr << "destruction" << endl;
+	}
+};
+
+
+class SillyHttpPut : public ASyncCallBack {
+	HTTPClient *hc;
+	string theurl;
+    public:
+	SillyHttpPut (string url, FieldsMap &vals) :
+	    theurl(url)
+	{
+	    hc = new HTTPClient ();
+	    if (hc == NULL) {
+cerr << "complain !" << endl;
+		return;
+	    }
+
+cerr << "here" << endl;
+	    hc->http_post_urlencoded (url, vals, this, 42);
+cerr << theurl << endl;
+	    hc->register_into_pool (&bulkrayscpool);
+cerr << "there" << endl;
+	}
+	virtual int callback (int v) {
+	    if (v == 42) {
+		if (hc == NULL) return -1;
+		cerr << "--------------------" << endl
+		     << theurl << endl
+		     << "--------------------" << endl
+		     << hc->response.req_body << "<--------" << endl
+		     << "--------------------" << endl;
+		hc->deregister_from_pool();
+		free (hc);
+		hc = NULL;
+	    }
+	    return 0;
+	}
+	virtual ~SillyHttpPut (void) {
 cerr << "destruction" << endl;
 	}
 };
@@ -1846,6 +1975,11 @@ int main (int nb, char ** cmde) {
 
 
 //    SillyHttpGet voila("http://bulkrays2.nkdn.fr/fiches/TODO");
+    FieldsMap vals;
+    vals ["login"]    = "jd";
+    vals ["srvfam"]   = "*";
+    vals ["passhash"] = "yopYOP";
+    SillyHttpPut voili("http://127.0.0.1:10082/check", vals);
 
     bulkrayscpool.select_loop (timeout);
 

@@ -486,7 +486,8 @@ static ostream * clog;
 	public:
 	    HTTPClient (bool keepalive = true);
 	    virtual ~HTTPClient (void);
-	    bool httpget (const string &url, ASyncCallBack *ascb = NULL, int callbackvalue = -1);
+	    bool http_get (const string &url, ASyncCallBack *ascb = NULL, int callbackvalue = -1);
+	    bool http_post_urlencoded (const string &url, FieldsMap& vals, ASyncCallBack *ascb = NULL, int callbackvalue = -1);
 	    virtual void lineread (void);
 	    virtual string getname (void) {return cururl;}
 	    ostream& errlog (void);
