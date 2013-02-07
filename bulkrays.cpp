@@ -426,6 +426,24 @@ static const char* hex="0123456789ABCDEF";
 	    return &mi->second;
     }
 
+    bool FieldsMap::match (const string &k, const string &v) const {
+	FieldsMap::const_iterator mi = find (k);
+	if (mi == end())
+	    return false;
+	if (mi->second == v)
+	    return true;
+	return false;
+    }
+
+    bool FieldsMap::notempty (const string &k) const {
+	FieldsMap::const_iterator mi = find (k);
+	if (mi == end())
+	    return false;
+	if (mi->second.empty())
+	    return false;
+	else
+	    return true;
+    }
 
     void HTTPRequest::logger () {
 	time_t t;
@@ -553,6 +571,35 @@ static const char* monthname[] = {
 	char buf[40];
 	snprintf (buf, 39, "%ld", (long) l);
 	outmime["Content-Length"] = buf;
+    }
+
+    bool HTTPRequest::cookcookies (void) {
+	MimeHeader::iterator mi = mime.find("Cookie");
+	if (mi == mime.end())
+	    return false;
+
+	string &c = mi->second;
+	size_t p = 0, s= c.size();
+
+	while (p < s) {
+	    while ((p<s) && isspace(c[p])) p++;
+	    size_t q = c.find('=',p);
+	    if (q == string::npos)
+		break;
+	    string ident = c.substr (p,q-p);
+	    p = q+1;
+
+	    q = c.find ("; ", p);
+	    if (q == string::npos) {
+		cookies[ident] = c.substr (p);
+		break;
+	    }
+	    cookies[ident] = c.substr (p, q-p);
+	    p = q+2;
+	}
+	if (cookies.empty())
+	    return false;
+	return true;
     }
 
     void HTTPRequest::initoutmime (void) {
@@ -1228,6 +1275,9 @@ if (debugparsereq) {
 		    flush();
 		    break;
 		case TRPending:
+		    state = TreatPending;
+		    if (cp != NULL)
+			cp->reqnow (fd);
 		    // JDJDJDJD sonme stuff missing here, probably ...
 		    break;
 	    }
@@ -1473,6 +1523,7 @@ cerr <<        setfill (' ') << setw(45) << url
     }
 
     bool HTTPClient::http_get (const string &url, ASyncCallBack *ascb, int callbackvalue) {
+	response.clear();
 	HTTPClient::ascb = ascb;
 	HTTPClient::callbackvalue = callbackvalue;
 	bool userpass;
@@ -1499,6 +1550,12 @@ cerr <<        setfill (' ') << setw(45) << url
 	    return false;
 
 	fd = propfd;
+	if (cp != NULL) {	// JDJDJDJD qiconn should provide such things no ?
+	    ConnectionPool *ocp = cp;
+	    deregister_from_pool ();
+	    register_into_pool (ocp);
+	}
+
 	(*out)	<< "GET " << uripath << " HTTP/1.1" << endl
 		<< "Accept: */*" << endl;
 	if (port != 80)
@@ -1515,6 +1572,7 @@ cerr <<        setfill (' ') << setw(45) << url
     }
 
     bool HTTPClient::http_post_urlencoded (const string &url, FieldsMap& vals, ASyncCallBack *ascb, int callbackvalue) {
+	response.clear();
 	HTTPClient::ascb = ascb;
 	HTTPClient::callbackvalue = callbackvalue;
 	bool userpass;
@@ -1540,6 +1598,16 @@ cerr <<        setfill (' ') << setw(45) << url
 	if (propfd < 0)
 	    return false;
 
+	fd = propfd;
+	if (cp != NULL) {
+cerr << "auto-de-re-enregistration !!!" << endl;
+	    ConnectionPool *ocp = cp;
+	    deregister_from_pool ();
+	    register_into_pool (ocp);
+	}
+
+
+cerr << "entering" << endl;
 	stringstream s;
 	FieldsMap::const_iterator mi;
 	for (mi=vals.begin() ; mi!=vals.end() ; mi++) {
@@ -1549,6 +1617,7 @@ cerr <<        setfill (' ') << setw(45) << url
 	    s << '=';
 	    urlencode (s, mi->second);
 	}
+cerr << "leaving : " << s.str() << endl;
 
 	fd = propfd;
 	(*out)	<< "POST " << uripath << " HTTP/1.1" << endl
@@ -1979,7 +2048,7 @@ int main (int nb, char ** cmde) {
     vals ["login"]    = "jd";
     vals ["srvfam"]   = "*";
     vals ["passhash"] = "yopYOP";
-    SillyHttpPut voili("http://127.0.0.1:10082/check", vals);
+//    SillyHttpPut voili("http://127.0.0.1:10082/check", vals);
 
     bulkrayscpool.select_loop (timeout);
 

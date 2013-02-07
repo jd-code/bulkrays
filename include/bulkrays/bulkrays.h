@@ -42,7 +42,14 @@ namespace bulkrays {
 	    const string * getmimefromterminaison (const char *term);
     };
 
-    typedef map<string, string> FieldsMap;
+    // typedef map<string, string> FieldsMap;
+    class FieldsMap : public map<string, string> {
+	public:
+	    bool match (const string &k, const string &v) const;
+	    bool notempty (const string &k) const;
+    };
+
+
     typedef FieldsMap MimeHeader;
 
     class FieldsMapR : public map<string, const string&> {
@@ -99,6 +106,7 @@ namespace bulkrays {
 	    FieldsMap	uri_fields,
 			body_fields;
 	    map <string, BodySubEntry> content_fields;
+	    FieldsMap	cookies;
 
 static ostream * clog;
 
@@ -110,6 +118,8 @@ static ostream * clog;
 	    void set_relative_expires_jitter (size_t seconds, float jitter = 7.0);
 	    void set_contentlength (size_t l);
 	    void publish_header (void);
+
+	    bool cookcookies (void);
 
 	    void initoutmime (void);
 
@@ -135,6 +145,7 @@ static ostream * clog;
 		  uri_fields.clear();
 		 body_fields.clear();
 	      content_fields.clear();
+		     cookies.clear();
 	    }
 	    HTTPRequest (HttppConn &dc) :
 		httppconn(&dc),
@@ -150,6 +161,7 @@ static ostream * clog;
 
 	    ostream& dump (ostream& out) const;
     };
+
 
     inline ostream& operator<< (ostream& out, HTTPRequest const &op) {
 	return op.dump (out);
@@ -355,6 +367,12 @@ static int idnum;
     };
 #ifdef BULKRAYS_H_GLOBINST
 int HttppConn::idnum = 0;
+    BULKRAYS_H_SCOPE ofstream cnull("/dev/null");
+    BULKRAYS_H_SCOPE HttppConn httpconnnull (-1, sockaddr_in());
+    BULKRAYS_H_SCOPE HTTPRequest reqnull(httpconnnull);
+#else
+    BULKRAYS_H_SCOPE ofstream cnull;
+    BULKRAYS_H_SCOPE HTTPRequest reqnull;
 #endif
 
     class HttppBinder : public ListeningSocket
@@ -422,31 +440,23 @@ static ostream * clog;
 //	    void publish_header (void);
 
 //	    void initoutmime (void);
-/*
+
 	    void clear (void) {
-		 expires_set = false;
-	     headerpublished = false;
+		  statuscode = 0;
+		    errormsg = NULL;
+		 suberrormsg = NULL;
 		      method.clear();
 			host.clear();
 		     req_uri.clear();
 		document_uri.clear();
 		     version.clear();
 			mime.clear();
-		  statuscode = 0;
-		    errormsg = "OK";
-		 suberrormsg = "";
-		initoutmime ();
 
 		  reqbodylen = 0;
 	       readbodybytes = 0;
 		    req_body.clear();
-
-		  req_fields.clear();
-		  uri_fields.clear();
-		 body_fields.clear();
-	      content_fields.clear();
 	    }
-*/
+
 	    HTTPResponse () :
 		statuscode(0),
 		errormsg(NULL),
