@@ -90,11 +90,11 @@ namespace bulkrays {
 	    bool expires_set;
 	    bool headerpublished;
 
-	    string method;
-	    string host;
-	    string req_uri;
-	    string document_uri;
-	    string version;
+	    string method;		//  GET PUT POST etc ....
+	    string host;		//  fqdn|ip[:port] 
+	    string req_uri;		//  /tagazon/file.htm?truc=a&thingy=b ....
+	    string document_uri;	//  /tagazon/file.htmm
+	    string version;		//  HTTP/1.1  ~  HTTP/1.0
 	    MimeHeader mime;
 
 
@@ -107,6 +107,8 @@ namespace bulkrays {
 			body_fields;
 	    map <string, BodySubEntry> content_fields;
 	    FieldsMap	cookies;
+
+	    bool cookiescooked, cookiescookedresult;
 
 static ostream * clog;
 
@@ -154,7 +156,10 @@ static ostream * clog;
 		suberrormsg(NULL),
 		expires_set(false),
 		headerpublished(false),
-		req_fields("req_fields") {
+		req_fields("req_fields"),
+		cookiescooked(false),
+		cookiescookedresult(false)
+	    {
 		initoutmime ();
 	    }
 	    ~HTTPRequest ();

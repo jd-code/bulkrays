@@ -153,7 +153,7 @@ static const char* hex="0123456789ABCDEF";
 		case '&':
 		case ' ':
 		    cout << '%'
-			 << hex[ (((unsigned char)s[i]) & 0xf0) >> 8 ]
+			 << hex[ (((unsigned char)s[i]) & 0xf0) >> 4 ]
 			 << hex[ (((unsigned char)s[i]) & 0x0f)      ];
 		    break;
 	    }
@@ -574,9 +574,15 @@ static const char* monthname[] = {
     }
 
     bool HTTPRequest::cookcookies (void) {
+	if (cookiescooked)
+	    return cookiescookedresult;
+
 	MimeHeader::iterator mi = mime.find("Cookie");
-	if (mi == mime.end())
-	    return false;
+	if (mi == mime.end()) {
+	    cookiescooked = true;
+	    cookiescookedresult = false;
+	    return cookiescookedresult;
+	}
 
 	string &c = mi->second;
 	size_t p = 0, s= c.size();
@@ -597,9 +603,14 @@ static const char* monthname[] = {
 	    cookies[ident] = c.substr (p, q-p);
 	    p = q+2;
 	}
-	if (cookies.empty())
-	    return false;
-	return true;
+	if (cookies.empty()) {
+	    cookiescooked = true;
+	    cookiescookedresult = false;
+	    return cookiescookedresult;
+	}
+	cookiescooked = true;
+	cookiescookedresult = true;
+	return cookiescookedresult;
     }
 
     void HTTPRequest::initoutmime (void) {
@@ -888,7 +899,18 @@ errlog() << "some garbage while waiting eow : {" << bufin << "}" << endl;
 		    gettimeofday(&entering_NowTreatRequest, NULL);
 		    returnerror.shortcuterror ((*out), request, 400, NULL, "wrong request line (method only ?)");
 		    gettimeofday(&entering_WaitingEOW, NULL);
-		    state = WaitingEOW;
+		    state = WaitingEOW;	// JDJDJDJD things are already so buggy that we're not http-speak and should bail out with a special bogussilentmode
+		    flushandclose();
+		    break;
+		}
+		if (p == 0) {	// empty method ......
+		    errlog() << "wrong request line (empty method ?): " << bufin << endl;
+		    request.set_relative_expires (60);
+		    gettimeofday(&entering_ReadBody, NULL);
+		    gettimeofday(&entering_NowTreatRequest, NULL);
+		    returnerror.shortcuterror ((*out), request, 400, NULL, "wrong request line (method only ?)");
+		    gettimeofday(&entering_WaitingEOW, NULL);
+		    state = WaitingEOW;	// JDJDJDJD things are already so buggy that we're not http-speak and should bail out with a special bogussilentmode
 		    flushandclose();
 		    break;
 		}
