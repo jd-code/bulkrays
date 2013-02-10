@@ -341,7 +341,8 @@ static int idnum;
 		ReadBody,		// buffering the body of the message itself
 		NowTreatRequest,	// all message suposely read, we treat ...
 		TreatPending,		// we're waiting a call-back from treatment that will finish pushing the output
-		WaitingEOW		// the treatment is finished we're waiting for the end of normal transmission
+		WaitingEOW,		// the treatment is finished we're waiting for the end of normal transmission
+		BuggyConn		// the connection is considered buggy no further reading should be performed and close asap
 	    } State;
 	    State state;
 

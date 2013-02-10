@@ -881,6 +881,10 @@ errlog() << "lastbwindex = " << lastbwindex << " shouldn't it be 0 ???" << endl;
 
 	switch (state) {
 
+	    case BuggyConn:
+		errlog() << "received some stuff in BuggyConn: " << bufin.size() << " bytes" << endl;
+		break;
+
 	    case TreatPending:
 	    case WaitingEOW:	// --------------------------------------------------------------------
 		errlog() << "received some stuff before end of transmission occured ?!" << endl;
@@ -899,7 +903,9 @@ errlog() << "some garbage while waiting eow : {" << bufin << "}" << endl;
 		    gettimeofday(&entering_NowTreatRequest, NULL);
 		    returnerror.shortcuterror ((*out), request, 400, NULL, "wrong request line (method only ?)");
 		    gettimeofday(&entering_WaitingEOW, NULL);
-		    state = WaitingEOW;	// JDJDJDJD things are already so buggy that we're not http-speak and should bail out with a special bogussilentmode
+		    // state = WaitingEOW;	// JDJDJDJD things are already so buggy that we're not http-speak and should bail out with a special bogussilentmode
+		    state = BuggyConn;
+		    cp->reqnor (fd);
 		    flushandclose();
 		    break;
 		}
@@ -910,7 +916,9 @@ errlog() << "some garbage while waiting eow : {" << bufin << "}" << endl;
 		    gettimeofday(&entering_NowTreatRequest, NULL);
 		    returnerror.shortcuterror ((*out), request, 400, NULL, "wrong request line (method only ?)");
 		    gettimeofday(&entering_WaitingEOW, NULL);
-		    state = WaitingEOW;	// JDJDJDJD things are already so buggy that we're not http-speak and should bail out with a special bogussilentmode
+		    // state = WaitingEOW;	// JDJDJDJD things are already so buggy that we're not http-speak and should bail out with a special bogussilentmode
+		    state = BuggyConn;
+		    cp->reqnor (fd);
 		    flushandclose();
 		    break;
 		}
@@ -931,7 +939,10 @@ if (debugparsereq) {
 		    gettimeofday(&entering_NowTreatRequest, NULL);
 		    returnerror.shortcuterror ((*out), request, 400, NULL, "wrong request line (missing http version ?)");
 		    gettimeofday(&entering_WaitingEOW, NULL);
-		    state = WaitingEOW;
+		    // state = WaitingEOW;	// JDJDJDJD things are already so buggy that we're not http-speak and should bail out with a special bogussilentmode
+		    // maybe this one is a little bit tough ... we'll see ....
+		    state = BuggyConn;
+		    cp->reqnor (fd);
 		    flushandclose();
 		    break;
 		}
@@ -1313,6 +1324,7 @@ if (debugparsereq) {
     }
 
     void HttppConn::reconnect_hook (void) {
+	// BuggyConn aren't logged twice here ...
 	if (state == WaitingEOW) {  // probably a shortened transmission !
 	    gettimeofday(&ending_WaitingEOW, NULL);
 	    request.statuscode = 999;	    // JDJDJDJD don't really know what to do here 
@@ -1323,8 +1335,11 @@ if (debugparsereq) {
     }
 
     void HttppConn::eow_hook (void) {
+// for now we also log BuggyConn here :
 if ((state != WaitingEOW) && (state != HTTPRequestLine))
 errlog() << "HttppConn::eow_hook called while not in WaitingEOW or HTTPRequestLine !!  state = " << (int) state << endl;
+
+	// BuggyConn aren't logged twice here ...
 	if (state == WaitingEOW) {	// JDJDJDJD logging should go here !!!
 	    gettimeofday(&ending_WaitingEOW, NULL);
 	    request.logger();
