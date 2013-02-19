@@ -445,6 +445,23 @@ static const char* hex="0123456789ABCDEF";
 	    return true;
     }
 
+    bool FieldsMap::notempty (const string &k, FieldsMap::iterator &mi) {
+	mi = find (k);
+	if (mi == end())
+	    return false;
+	if (mi->second.empty())
+	    return false;
+	else
+	    return true;
+    }
+
+    bool FieldsMap::verif (const string &k, FieldsMap::iterator& mi) {
+	mi = find (k);
+	if (mi == end())
+	    return false;
+	return true;
+    }
+
     void HTTPRequest::logger () {
 	time_t t;
 	time (&t);
@@ -1836,7 +1853,8 @@ cerr << "there" << endl;
 		     << hc->response.req_body << "<--------" << endl
 		     << "--------------------" << endl;
 		hc->deregister_from_pool();
-		free (hc);
+cerr << "about to delete hc" << endl;
+		delete hc;
 		hc = NULL;
 	    }
 	    return 0;
@@ -1875,7 +1893,8 @@ cerr << "there" << endl;
 		     << hc->response.req_body << "<--------" << endl
 		     << "--------------------" << endl;
 		hc->deregister_from_pool();
-		free (hc);
+cerr << "about to delete hc (2)" << endl;
+		delete hc;
 		hc = NULL;
 	    }
 	    return 0;

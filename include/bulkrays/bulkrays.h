@@ -47,6 +47,8 @@ namespace bulkrays {
 	public:
 	    bool match (const string &k, const string &v) const;
 	    bool notempty (const string &k) const;
+	    bool notempty (const string &k, FieldsMap::iterator &mi);
+	    bool verif (const string &, FieldsMap::iterator& mi);
     };
 
 
@@ -508,6 +510,7 @@ static ostream * clog;
 	    virtual string getname (void) {return cururl;}
 	    ostream& errlog (void);
 	    ostream& shorterrlog (void);
+// TODO !	    virtual void reconnect_hook (void);
     };
 }
 

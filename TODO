@@ -40,6 +40,7 @@ HTTPClient
     User-Agent
     additionnal mime entries
     keepalive to be finished
+    what to do when lost connection ? overload reconnect_hook
 
 simplefmap:
     [done] lire les correspondances terminaisons de fichier -> mime
