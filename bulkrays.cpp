@@ -870,7 +870,7 @@ errlog() << "lastbwindex = " << lastbwindex << " shouldn't it be 0 ???" << endl;
 	MimeHeader::iterator mi = request.mime.find("Content-Length");
 	if (mi == request.mime.end()) {
 	    if (request.method == "PUT") {
-		errlog() << "MessageBody : no Content-Length header " << bufin << endl;
+		errlog() << "MessageBody : no Content-Length header " << hexdump(bufin) << endl;
 	    }
 	    request.reqbodylen = 0;
 	    request.readbodybytes = 0;
@@ -905,7 +905,7 @@ errlog() << "lastbwindex = " << lastbwindex << " shouldn't it be 0 ???" << endl;
 	    case TreatPending:
 	    case WaitingEOW:	// --------------------------------------------------------------------
 		errlog() << "received some stuff before end of transmission occured ?!" << endl;
-errlog() << "some garbage while waiting eow : {" << bufin << "}" << endl;
+errlog() << "some garbage while waiting eow : {" << hexdump(bufin) << "}" << endl;
 		break;
 
 	    case HTTPRequestLine:   // ----------------------------------------------------------------
@@ -914,7 +914,7 @@ errlog() << "some garbage while waiting eow : {" << bufin << "}" << endl;
 		p = bufin.find (' ');
 		if (p == string::npos) {
 		    request.method = bufin; // JDJDJDJD unused ????
-		    errlog() << "wrong request line (method only ?): " << bufin << endl;
+		    errlog() << "wrong request line (method only ?): " << hexdump(bufin) << endl;
 		    request.set_relative_expires (60);
 		    gettimeofday(&entering_ReadBody, NULL);
 		    gettimeofday(&entering_NowTreatRequest, NULL);
@@ -927,7 +927,7 @@ errlog() << "some garbage while waiting eow : {" << bufin << "}" << endl;
 		    break;
 		}
 		if (p == 0) {	// empty method ......
-		    errlog() << "wrong request line (empty method ?): " << bufin << endl;
+		    errlog() << "wrong request line (empty method ?): " << hexdump(bufin) << endl;
 		    request.set_relative_expires (60);
 		    gettimeofday(&entering_ReadBody, NULL);
 		    gettimeofday(&entering_NowTreatRequest, NULL);
@@ -999,7 +999,7 @@ if (debugparsereq) {
 		    break;
 		}
 		if (!isalnum(bufin[0])) {
-		    errlog() << "wrong mime header-name (bad starting char ?) : " << bufin << endl;
+		    errlog() << "wrong mime header-name (bad starting char ?) : " << hexdump(bufin) << endl;
 		    request.set_relative_expires (0);   // this isn't cachable, the uri may be identical and mimes differents
 		    gettimeofday(&entering_ReadBody, NULL);
 		    gettimeofday(&entering_NowTreatRequest, NULL);
@@ -1053,7 +1053,7 @@ if (debugparsereq) {
 		}
 		p = bufin.find (':');
 		if (p == string::npos) {
-		    errlog() << "wrong mime header-name (missing ':' ?) : " << bufin << endl;
+		    errlog() << "wrong mime header-name (missing ':' ?) : " << hexdump(bufin) << endl;
 		    request.set_relative_expires (0);   // this isn't cachable, the uri may be identical and mimes differents
 		    gettimeofday(&entering_ReadBody, NULL);
 		    gettimeofday(&entering_NowTreatRequest, NULL);
@@ -1064,7 +1064,7 @@ if (debugparsereq) {
 		    break;
 		}
 		if (!isalnum(bufin[0])) {
-		    errlog() << "wrong mime header-name (bad starting char ?) : " << bufin << endl;
+		    errlog() << "wrong mime header-name (bad starting char ?) : " << hexdump(bufin) << endl;
 		    request.set_relative_expires (0);   // this isn't cachable, the uri may be identical and mimes differents
 		    gettimeofday(&entering_ReadBody, NULL);
 		    gettimeofday(&entering_NowTreatRequest, NULL);
@@ -1775,13 +1775,13 @@ cerr << bufin << endl;
 		}
 		p = bufin.find (':');
 		if (p == string::npos) {
-		    errlog() << "wrong mime header-name (missing ':' ?) : " << bufin << endl;
+		    errlog() << "wrong mime header-name (missing ':' ?) : " << hexdump(bufin) << endl;
 		    cerr << "HTTPClient::lineread missing http return code !" << endl;
 // JDJDJDJD should close the connection here
 		    break;
 		}
 		if (!isalnum(bufin[0])) {
-		    errlog() << "wrong mime header-name (bad starting char ?) : " << bufin << endl;
+		    errlog() << "wrong mime header-name (bad starting char ?) : " << hexdump(bufin) << endl;
 		    cerr << "HTTPClient::lineread missing http return code !" << endl;
 // JDJDJDJD should close the connection here
 		    break;
