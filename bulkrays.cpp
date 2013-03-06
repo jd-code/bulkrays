@@ -24,6 +24,14 @@ namespace bulkrays {
     using namespace std;
     using namespace qiconn;
 
+    Property::Property (const string &s) : s(s) {
+	i = atoi (s.c_str());
+	if ((s=="true") || (s=="Y") || (s=="y") || (s=="yes") || (s=="YES") || (s=="TRUE"))
+	    b = true;
+	else
+	    b = false;
+    }
+
     inline int hexfromchar (char c) {
 	switch (c) {
 	    case '0': return 0;
@@ -1935,8 +1943,12 @@ int main (int nb, char ** cmde) {
     string flogname("/var/log/bulkrays/access_log");	// JDJDJDJD we should introduce a DEFINEd scheme for such defaults
     bool activatettyconsole = false;
 
+
+    bool inproperties = false;
+
     int i;
     for (i=1 ; i<nb ; i++) {
+      if (!inproperties) {
 	if (strncmp (cmde[i], "--help", 6) == 0) {
 	    cout << cmde[0] << "   \\" << endl
 			    << "      [--bind=[address][:port]]  \\" << endl
@@ -1977,9 +1989,25 @@ int main (int nb, char ** cmde) {
 	    }
 	} else if (strncmp (cmde[i], "--console", 9) == 0) {
 	    activatettyconsole = true;
+	} else if ((strcmp (cmde[i],"-p") == 0) || (strcmp(cmde[i], "--properties"))) {
+	    inproperties = true;
+	    continue;
 	} else {
 	    cerr << "unknown option : " << cmde[i] << endl;
 	}
+      } else {	// here below inproperties is true !
+	if (!isalnum (cmde[i][0])) {
+	    cerr << "bad property-name : " << cmde[i] << endl;
+	    continue;
+	}
+	size_t j=0;
+	while ((cmde[i][j] != 0) && (cmde[i][j]!='=')) j++;
+	if (cmde[i][j] != '=') {    // we have a simple property-name !
+	    properties[cmde[i]] = string("y");	// we set it true
+	    continue;
+	}
+	properties[string(cmde[i],j)] = string(cmde[i]+j+1);
+      }
     }
 
 

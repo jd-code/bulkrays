@@ -1,6 +1,7 @@
 
 #DEBUG=
 DEBUG=-g
+CPPFLAGS=-Wnon-virtual-dtor
 INCLUDES=-I./include -I./qiconn/include
 PREFIX=/usr/local
 SHELL=/bin/sh
@@ -15,14 +16,17 @@ allstrip: all
 
 
 vimtest: all
-	./bulkrays --bind=127.0.0.1:10080 --user=$$USER --access_log=access_log --earlylog --console 2>&1 | unbuffer -p tr ':' '='
+	./bulkrays --bind=127.0.0.1:10080 --user=$$USER		\
+	    --access_log=access_log --earlylog --console	\
+	    --p tagazou zonzon=2 p=3				\
+	    2>&1 | unbuffer -p tr ':' '='
 	### ddd --args ./qigong    -pidfile=/tmp/qigongbuild.pid -logfile=testqigong.log -debugout -port 1364 -nofork &
 
 bulkrays: bulkrays.o qiconn/qiconn.o testsite.o bootstrap.o testsite.o simplefmap.o include/bulkrays/bulkrays.h
-	g++ ${DEBUG} ${INCLUDES} -Wall -o  bulkrays bulkrays.o qiconn/qiconn.o bootstrap.o testsite.o simplefmap.o
+	g++ ${DEBUG} ${CPPFLAGS} ${INCLUDES} -Wall -o  bulkrays bulkrays.o qiconn/qiconn.o bootstrap.o testsite.o simplefmap.o
 
 bulkrays.o: bulkrays.cpp include/bulkrays/bulkrays.h qiconn/include/qiconn/qiconn.h
-	g++ ${DEBUG} ${INCLUDES} -DBULKRAYSVERSION="\"${VERSION}\"" -Wall -c bulkrays.cpp
+	g++ ${DEBUG} ${CPPFLAGS} ${INCLUDES} -DBULKRAYSVERSION="\"${VERSION}\"" -Wall -c bulkrays.cpp
 
 
 qiconn/qiconn.o: qiconn/qiconn.cpp qiconn/include/qiconn/qiconn.h
@@ -47,11 +51,11 @@ doc: include/bulkrays/*.h *.cpp bulkrays.dox
 
 
 bootstrap.o: bootstrap.cpp include/bulkrays/bulkrays.h
-	g++ ${DEBUG} ${INCLUDES} -Wall -c bootstrap.cpp
+	g++ ${DEBUG} ${CPPFLAGS} ${INCLUDES} -Wall -c bootstrap.cpp
 
 testsite.o: testsite.cpp include/bulkrays/bulkrays.h
-	g++ ${DEBUG} ${INCLUDES} -DBULKRAYSVERSION="\"${VERSION}\"" -Wall -c testsite.cpp
+	g++ ${DEBUG} ${CPPFLAGS} ${INCLUDES} -DBULKRAYSVERSION="\"${VERSION}\"" -Wall -c testsite.cpp
 
 simplefmap.o: simplefmap.cpp include/bulkrays/bulkrays.h
-	g++ ${DEBUG} ${INCLUDES} -Wall -c simplefmap.cpp
+	g++ ${DEBUG} ${CPPFLAGS} ${INCLUDES} -Wall -c simplefmap.cpp
 

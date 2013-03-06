@@ -24,6 +24,29 @@ namespace bulkrays {
     BULKRAYS_H_SCOPE bool debugearlylog;
 #endif
 
+    class Property {
+	private:
+	    bool b;
+	    int i;
+	    string s;
+	public:
+	    Property () : b(false), i(0) {}
+	    Property (const string &s);
+	    inline operator bool(void) { return b; }
+	    inline operator int(void) { return i; }
+	    inline operator const string & (void) { return s; }
+    };
+
+    class PropertyMap : public map <string, Property> {
+	public:
+    };
+
+#ifdef BULKRAYS_H_GLOBINST
+    BULKRAYS_H_SCOPE PropertyMap properties;
+#else
+    BULKRAYS_H_SCOPE PropertyMap properties;
+#endif
+
     int percentdecode (const string &src, string &result);
     int percentdecodeform (const string &src, string &result);
     string xmlencode (const string &s);
@@ -263,7 +286,7 @@ static ostream * clog;
     class TreatRequest {
 	public:
 	    TreatRequest () {}
-	    ~TreatRequest () {}
+	    virtual ~TreatRequest () {}
 	    virtual TReqResult output (ostream &cout, HTTPRequest &req) = 0;
 	    TReqResult error (ostream &cout, HTTPRequest &req, int statuscode, const char* message=NULL, const char* submessage=NULL, bool closeconnection=false);
 	    inline int errorandclose (ostream &cout, HTTPRequest &req, int statuscode, const char* message=NULL, const char* submessage=NULL) {
@@ -275,7 +298,7 @@ static ostream * clog;
 	    bool closeconnection;
 	public:
 	    ReturnError () : TreatRequest (), closeconnection(true) {}
-	    ~ReturnError () {}
+	    virtual ~ReturnError () {}
 	    
 	    virtual TReqResult output (ostream &cout, HTTPRequest &req);
 	    int shortcuterror (ostream &cout, HTTPRequest &req, int statuscode, const char* message=NULL, const char* submessage=NULL, bool closeconnection=true);
@@ -286,7 +309,7 @@ static ostream * clog;
     class URIMapper {
 	public:
 	    URIMapper () {}
-	    ~URIMapper () {}
+	    virtual ~URIMapper () {}
 	    virtual TreatRequest* treatrequest (HTTPRequest &req) = 0;
     };
 
@@ -405,6 +428,7 @@ int HttppConn::idnum = 0;
     class ASyncCallBack {
 	public:
 	    ASyncCallBack () {}
+	    virtual ~ASyncCallBack () {}
 	    virtual int callback (int v) = 0;
     };
 
