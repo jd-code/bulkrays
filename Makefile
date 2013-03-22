@@ -16,11 +16,12 @@ allstrip: all
 
 
 vimtest: all
+	# ddd -args ./bulkrays --bind=127.0.0.1:10080 --user=$$USER --access_log=access_log --earlylog --console --p tagazou zonzon=2 p=3 BulkRays::ownsetoftests &
 	./bulkrays --bind=127.0.0.1:10080 --user=$$USER		\
 	    --access_log=access_log --earlylog --console	\
 	    --p tagazou zonzon=2 p=3				\
+	    BulkRays::ownsetoftests				\
 	    2>&1 | unbuffer -p tr ':' '='
-	### ddd --args ./qigong    -pidfile=/tmp/qigongbuild.pid -logfile=testqigong.log -debugout -port 1364 -nofork &
 
 bulkrays: bulkrays.o qiconn/qiconn.o testsite.o bootstrap.o testsite.o simplefmap.o include/bulkrays/bulkrays.h
 	g++ ${DEBUG} ${CPPFLAGS} ${INCLUDES} -Wall -o  bulkrays bulkrays.o qiconn/qiconn.o bootstrap.o testsite.o simplefmap.o

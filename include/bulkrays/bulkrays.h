@@ -2,6 +2,7 @@
 #define INCL_BULKRAYS_H
 
 #include <iomanip>
+#include <vector>
 
 #ifdef BULKRAYS_H_GLOBINST
 #define BULKRAYS_H_SCOPE
@@ -436,6 +437,7 @@ int HttppConn::idnum = 0;
     {
 	public:
 	    // HttppConn *httppconn;
+	    bool fulltransmission;
 	    int statuscode;
 	    const char* errormsg;
 	    const char* suberrormsg;
@@ -474,6 +476,7 @@ static ostream * clog;
 //	    void initoutmime (void);
 
 	    void clear (void) {
+	    fulltransmission = false;
 		  statuscode = 0;
 		    errormsg = NULL;
 		 suberrormsg = NULL;
@@ -490,6 +493,7 @@ static ostream * clog;
 	    }
 
 	    HTTPResponse () :
+	    fulltransmission(false),
 		statuscode(0),
 		errormsg(NULL),
 		suberrormsg(NULL)
@@ -500,8 +504,70 @@ static ostream * clog;
 	    ostream& dump (ostream& out) const;
     };
 
+    class HTTPConn {
+	public:
+	    string host;
+	    int port;
+
+	    inline HTTPConn () : port (0) {}
+	    HTTPConn (HTTPConn const &o) {
+		host = o.host;
+		port = o.port;
+	    }
+
+	    HTTPConn& operator= (HTTPConn const &o) {
+		host = o.host;
+		port = o.port;
+		return *this;
+	    } 
+    };
+    
+    class SplitUrl {
+	public:
+	    string user;
+	    string pass;
+	    
+	    HTTPConn hostport;
+
+	    string uripath;
+	    bool userpass;  // do we have a user (+pass) ?
+
+	    SplitUrl (void): userpass(false) {}
+	    SplitUrl (const string &url);
+
+	    operator string () const;
+
+	    SplitUrl (SplitUrl const &o) {
+		user = o.user;
+		pass = o.pass;
+		hostport = o.hostport;
+		uripath = o.uripath;
+		userpass = o.userpass;
+	    }
+	    SplitUrl& operator= (SplitUrl const &o) {
+		user = o.user;
+		pass = o.pass;
+		hostport = o.hostport;
+		uripath = o.uripath;
+		userpass = o.userpass;
+		return *this;
+	    }
+    };
 
     class HTTPClient : public BufConnection {
+
+/*
+ *  missing here :
+ *	- should log bad connections attempt (connect failed)
+ *	- when not registered to a collection pool, the query is silently lost !
+ *	- refuse query while already querying ...
+ *	- keepalive
+ *	- cleaning between subsequent query (particularly the presponse pointer ...)
+ *	- bug at premeture closure from the other side ...
+ *	- bug at closure from the other side ...
+ */
+
+
 	typedef enum {
 	    creation,
 	    waitingHTTPline1,
@@ -518,24 +584,47 @@ static ostream * clog;
 	    int callbackvalue;
 	    string prevhost;
 	    stringstream raw;
-	    string cururl;
 
-	    string mimevalue, mimeheadername;
+	    string mimevalue, mimeheadername;	// JDJDJDJD where is the cleaning between two reqs ?
+	    SplitUrl curspliturl;		// JDJDJDJD where is the cleaning between two reqs ?
 
 	public:
-	    HTTPResponse response;
+	    HTTPResponse * presponse;
 
 	public:
 	    HTTPClient (bool keepalive = true);
 	    virtual ~HTTPClient (void);
-	    bool http_get (const string &url, ASyncCallBack *ascb = NULL, int callbackvalue = -1);
-	    bool http_post_urlencoded (const string &url, FieldsMap& vals, ASyncCallBack *ascb = NULL, int callbackvalue = -1);
+	    bool http_get (const SplitUrl &spurl, HTTPResponse &response, ASyncCallBack *ascb = NULL, int callbackvalue = -1);
+	    bool http_post_urlencoded (const SplitUrl &spurl, FieldsMap& vals, HTTPResponse &response, ASyncCallBack *ascb = NULL, int callbackvalue = -1);
+
+	    inline bool http_get (const string &url, HTTPResponse &response, ASyncCallBack *ascb = NULL, int callbackvalue = -1) {
+		SplitUrl spurl(url);
+		return http_get (spurl, response, ascb, callbackvalue);
+	    }
+	    inline bool http_post_urlencoded (const string &url, FieldsMap& vals, HTTPResponse &response, ASyncCallBack *ascb = NULL, int callbackvalue = -1) {
+		SplitUrl spurl(url);
+		return http_post_urlencoded (spurl, vals, response, ascb, callbackvalue);
+	    }
+
 	    virtual void lineread (void);
-	    virtual string getname (void) {return cururl;}
+	    virtual string getname (void);
 	    ostream& errlog (void);
 	    ostream& shorterrlog (void);
-// TODO !	    virtual void reconnect_hook (void);
+	    virtual void reconnect_hook (void);
     };
+
+    class HTTPClientPool {
+	protected:
+	    vector <HTTPClient*> vhc;
+	    list <HTTPClient*> available_hc;
+	    map <string, HTTPClient*> mhc;
+	    int maxpool;
+	public:
+	    HTTPClientPool (int maxpool);
+
+
+    };
+
 }
 
 #endif // INCL_BULKRAYS_H

@@ -1509,11 +1509,14 @@ for (i=0 ; i<256 ; i++) {
     }
 
     ostream& HTTPClient::errlog (void) {
-	return shorterrlog()
-	    << response.method << " ("
-	    << response.host << ") "
-	    << response.document_uri
-	    << " ";
+	if (presponse != NULL)  {
+	    return shorterrlog()
+		<< presponse->method << " () "
+		<< (string)curspliturl
+		<< " ";
+	} else {
+	    return shorterrlog() << " undefined_HTTPClient " ;
+	}
     }
 
     HTTPClient::HTTPClient (bool keepalive)
@@ -1522,27 +1525,53 @@ for (i=0 ; i<256 ; i++) {
 	keepalive(keepalive),
 	timeout (0),
 	ascb (NULL),
-	callbackvalue (-1)
+	callbackvalue (-1),
+	presponse(NULL)
     {	
     }
 
     HTTPClient::~HTTPClient (void) {
     }
 
+    void HTTPClient::reconnect_hook (void) {
+	switch (state) {
+	    case creation:
+		errlog() << "HTTPClient::reconnect_hook state=creation ???? wondering how this could happen ?" << endl;
+		break;
+	    case waitingHTTPline1:
+	    case mimeheadering:
+	    case nextmimeheadering:
+	    case docreceiving:
+		errlog() << " reconnect_hook short transmission" << endl;
+		setlinemode();
+		state = waiting_cbtreat;
+		if (ascb != NULL)
+		    ascb->callback (callbackvalue);
+		break;
+	    case waiting_cbtreat:
+		errlog() << " reconnect_hook in waiting_cbtreat" << endl;
+		break;
+	}
+    }
+
+
 // http://user:pass@tagazon.tragacouet.cn:80/thepath/part/ofthe/url?thefieldspart=ofthequery&b=0
 //        p        r                        q 
 //        p         r                       q 
 
-    void urlsplit (const string &url,
-	  bool &userpass,
-	string &user,
-	string &pass,
-	string &host,
-	   int &port,
-	string &uripath
-    ) {
+
+    SplitUrl::SplitUrl (const string &url) {
+
+//    void urlsplit (const string &url,
+//	  bool &userpass,
+//	string &user,
+//	string &pass,
+//	string &host,
+//	   int &port,
+//	string &uripath
+//    ) {
 	userpass = false;
-	port = 80;
+	hostport.port = 80;
 
 	size_t p = 0;
 	string fqdnpart;
@@ -1565,10 +1594,10 @@ for (i=0 ; i<256 ; i++) {
 	}
 	size_t portbegin = url.find_first_of (":/", r);
 	if ((portbegin != string::npos) && (portbegin != q)) {
-	    port = atoi (url.substr(portbegin+1, (q==string::npos)? string::npos : portbegin+1 - q).c_str());
-	    host = url.substr (r, portbegin-r);
+	    hostport.port = atoi (url.substr(portbegin+1, (q==string::npos)? string::npos : portbegin+1 - q).c_str());
+	    hostport.host = url.substr (r, portbegin-r);
 	} else {
-	    host = url.substr (r, (q==string::npos)? string::npos : q-r);
+	    hostport.host = url.substr (r, (q==string::npos)? string::npos : q-r);
 	}
 	
 	if (q != string::npos)
@@ -1578,22 +1607,73 @@ cerr <<        setfill (' ') << setw(45) << url
      << "|" << setfill (' ') << (userpass ? " # " : "   " )
      << "|" << setfill (' ') << setw(10) << user
      << "|" << setfill (' ') << setw(10) << pass
-     << "|" << setfill (' ') << setw(35) << host
-     << "|" << setfill (' ') << setw(3) << port
+     << "|" << setfill (' ') << setw(35) << hostport.host
+     << "|" << setfill (' ') << setw(3) << hostport.port
      << "|" << uripath << "|" << endl;
 
     }
 
-    bool HTTPClient::http_get (const string &url, ASyncCallBack *ascb, int callbackvalue) {
-	response.clear();
+
+    string HTTPClient::getname(void) {
+	return string (curspliturl);
+//	if (pcurspliturl != NULL)
+//	    return string (*pcurspliturl);
+//	else
+//	    return "[free]";
+    }
+
+    string & appenduint16tos (unsigned int i, string &s) {
+	int e=1000000000;
+	unsigned int r;
+	while ((e>0) && ((r = i/e) == 0)) e /= 10;
+	if (e <= 0) {
+	    s += "0";
+	    return s;
+	}
+	if (r >= 10) {
+	    s += "Nan";
+	    return s;
+	}
+	s += ('0' + r); i-= r*e; e /= 10;
+//cerr << "i=" << i << " e=" << e << " r=" << e << " s=" << s << endl;
+	while (e>0) {
+	    r = i/e;
+	    s += ('0' + r); i-= r*e; e /= 10;
+//cerr << "i=" << i << " e=" << e << " r=" << e << " s=" << s << endl;
+	}
+	return s;
+    }
+
+    SplitUrl::operator string () const {
+	string s;
+	if (userpass) {
+	    s += user;
+	    s += ':';
+	    s += pass;
+	    s += '@';
+	}
+	s += hostport.host;
+	if (hostport.port != 80) {
+	    s += ':';
+	    appenduint16tos (hostport.port, s);
+	}
+cerr << endl << "********************************************** " << s << endl;
+	s += uripath;
+cerr << "********************************************** " << s << endl << endl;;
+	return s;
+    }
+
+    bool HTTPClient::http_get (const SplitUrl &spurl, HTTPResponse &response, ASyncCallBack *ascb, int callbackvalue) {
+	presponse = &response;
+	curspliturl = spurl;
+//	response.clear();
 	HTTPClient::ascb = ascb;
 	HTTPClient::callbackvalue = callbackvalue;
-	bool userpass;
-	string user, pass, host, uripath;
-	int port;
-
-	urlsplit (url, userpass, user, pass, host, port, uripath);
-
+//	bool userpass;
+//	string user, pass, host, uripath;
+//	int port;
+//
+//	urlsplit (url, userpass, user, pass, host, port, uripath);
 
 	// MISSING : checking keepalive value and if host is the same and if the connection is ok ...
 
@@ -1606,24 +1686,24 @@ cerr <<        setfill (' ') << setw(45) << url
 
 	// JDJDJDJD should switch to some non-blocking connect !!!!
 	// ideally inherited from a special Connection parent ???
-	int propfd = init_connect (host.c_str(), port);
+	int propfd = init_connect (spurl.hostport.host.c_str(), spurl.hostport.port);
 
-	if (propfd < 0)
+	if (propfd < 0)		// JDJDJDJD should log bad connections attempt ????
 	    return false;
 
-	fd = propfd;
 	if (cp != NULL) {	// JDJDJDJD qiconn should provide such things no ?
 	    ConnectionPool *ocp = cp;
 	    deregister_from_pool ();
+	    fd = propfd;
 	    register_into_pool (ocp);
 	}
 
-	(*out)	<< "GET " << uripath << " HTTP/1.1" << endl
+	(*out)	<< "GET " << spurl.uripath << " HTTP/1.1" << endl
 		<< "Accept: */*" << endl;
-	if (port != 80)
-	    (*out) << "Host: " << host << ':' << port << endl;
+	if (spurl.hostport.port != 80)
+	    (*out) << "Host: " << spurl.hostport.host << ':' << spurl.hostport.port << endl;
 	else
-	    (*out) << "Host: " << host << endl;
+	    (*out) << "Host: " << spurl.hostport.host << endl;
 	(*out)  << "Connection: " << "close" << endl	    // JDJDJDJD to be fixed
 		<< endl;
 
@@ -1633,15 +1713,18 @@ cerr <<        setfill (' ') << setw(45) << url
 	return true;
     }
 
-    bool HTTPClient::http_post_urlencoded (const string &url, FieldsMap& vals, ASyncCallBack *ascb, int callbackvalue) {
-	response.clear();
+    
+    bool HTTPClient::http_post_urlencoded (const SplitUrl &spurl, FieldsMap& vals, HTTPResponse &response, ASyncCallBack *ascb, int callbackvalue) {
+	presponse = &response;
+	curspliturl = spurl;
+//	response.clear();
 	HTTPClient::ascb = ascb;
 	HTTPClient::callbackvalue = callbackvalue;
-	bool userpass;
-	string user, pass, host, uripath;
-	int port;
-
-	urlsplit (url, userpass, user, pass, host, port, uripath);
+//	bool userpass;
+//	string user, pass, host, uripath;
+//	int port;
+//
+//	urlsplit (url, userpass, user, pass, host, port, uripath);
 
 
 	// MISSING : checking keepalive value and if host is the same and if the connection is ok ...
@@ -1655,16 +1738,16 @@ cerr <<        setfill (' ') << setw(45) << url
 
 	// JDJDJDJD should switch to some non-blocking connect !!!!
 	// ideally inherited from a special Connection parent ???
-	int propfd = init_connect (host.c_str(), port);
+	int propfd = init_connect (spurl.hostport.host.c_str(), spurl.hostport.port);
 
 	if (propfd < 0)
 	    return false;
 
-	fd = propfd;
 	if (cp != NULL) {
 cerr << "auto-de-re-enregistration !!!" << endl;
 	    ConnectionPool *ocp = cp;
 	    deregister_from_pool ();
+	    fd = propfd;
 	    register_into_pool (ocp);
 	}
 
@@ -1681,13 +1764,12 @@ cerr << "entering" << endl;
 	}
 cerr << "leaving : " << s.str() << endl;
 
-	fd = propfd;
-	(*out)	<< "POST " << uripath << " HTTP/1.1" << endl
+	(*out)	<< "POST " << spurl.uripath << " HTTP/1.1" << endl
 		<< "Accept: */*" << endl;
-	if (port != 80)
-	    (*out) << "Host: " << host << ':' << port << endl;
+	if (spurl.hostport.port != 80)
+	    (*out) << "Host: " << spurl.hostport.host << ':' << spurl.hostport.port << endl;
 	else
-	    (*out) << "Host: " << host << endl;
+	    (*out) << "Host: " << spurl.hostport.host << endl;
 	(*out)  << "Connection: " << "close" << endl	    // JDJDJDJD to be fixed
 		<< "Content-Type: application/x-www-form-urlencoded" << endl
 		<< "Content-Length: " << s.str().size() << endl
@@ -1701,6 +1783,14 @@ cerr << "leaving : " << s.str() << endl;
     }
 
     void HTTPClient::lineread (void) {
+	if (presponse == NULL) {
+	    cerr << "HTTPClient::lineread we have serious troubles with a presponse=NULL here !" << endl;   // JDJDJDJD should close the link and reset
+	    /* JDJDJDJD
+		some serious stuff missing here
+		*/	
+	    return;
+	}
+	HTTPResponse &response = *presponse;
 	size_t len, p;
 	switch (state) {
 	    case creation:
@@ -1812,18 +1902,20 @@ cerr << bufin << endl;
 errlog() << "ReadBody : " << response.readbodybytes << " read, " << response.reqbodylen << " schedulled.  diff = " << response.readbodybytes-response.reqbodylen << endl;
 cerr << ostreamMap(response.mime,           BEGIN_TERM_IDENT "mime"            END_TERM_IDENT) << endl;
 		    setlinemode();
-
+		    response.fulltransmission = true;
+		    state = waiting_cbtreat;
 		    if (ascb != NULL)
 			ascb->callback (callbackvalue);
-		    state = waiting_cbtreat;
 		    break;
 		}
 		break;
 
 	    case waiting_cbtreat:
+		cerr << "HTTPClient: receiving some stuff while in waiting_cbtreat state ?!" << endl;
 		break;
 
 	    default:
+		cerr << "HTTPClient: strange unhandled case occured at lineread ? ?!" << endl;
 		break;
 	}
 	
@@ -1836,6 +1928,7 @@ cerr << ostreamMap(response.mime,           BEGIN_TERM_IDENT "mime"            E
 class SillyHttpGet : public ASyncCallBack {
 	HTTPClient *hc;
 	string theurl;
+	HTTPResponse response;
     public:
 	SillyHttpGet (string url) :
 	    theurl(url)
@@ -1845,11 +1938,12 @@ class SillyHttpGet : public ASyncCallBack {
 cerr << "complain !" << endl;
 		return;
 	    }
+	    hc->register_into_pool (&bulkrayscpool);
 
 cerr << "here" << endl;
-	    hc->http_get (url, this, 42);
+	    response.clear();
+	    hc->http_get (url, response, this, 42);
 cerr << theurl << endl;
-	    hc->register_into_pool (&bulkrayscpool);
 cerr << "there" << endl;
 	}
 	virtual int callback (int v) {
@@ -1858,11 +1952,11 @@ cerr << "there" << endl;
 		cerr << "--------------------" << endl
 		     << theurl << endl
 		     << "--------------------" << endl
-		     << hc->response.req_body << "<--------" << endl
+		     << response.req_body << "<--------" << endl
 		     << "--------------------" << endl;
 		hc->deregister_from_pool();
 cerr << "about to delete hc" << endl;
-		delete hc;
+///////////////		delete hc;
 		hc = NULL;
 	    }
 	    return 0;
@@ -1876,6 +1970,7 @@ cerr << "destruction" << endl;
 class SillyHttpPut : public ASyncCallBack {
 	HTTPClient *hc;
 	string theurl;
+	HTTPResponse response;
     public:
 	SillyHttpPut (string url, FieldsMap &vals) :
 	    theurl(url)
@@ -1885,11 +1980,12 @@ class SillyHttpPut : public ASyncCallBack {
 cerr << "complain !" << endl;
 		return;
 	    }
+	    hc->register_into_pool (&bulkrayscpool);
 
 cerr << "here" << endl;
-	    hc->http_post_urlencoded (url, vals, this, 42);
+	    response.clear();
+	    hc->http_post_urlencoded (url, vals, response, this, 42);
 cerr << theurl << endl;
-	    hc->register_into_pool (&bulkrayscpool);
 cerr << "there" << endl;
 	}
 	virtual int callback (int v) {
@@ -1898,11 +1994,11 @@ cerr << "there" << endl;
 		cerr << "--------------------" << endl
 		     << theurl << endl
 		     << "--------------------" << endl
-		     << hc->response.req_body << "<--------" << endl
+		     << response.req_body << "<--------" << endl
 		     << "--------------------" << endl;
 		hc->deregister_from_pool();
 cerr << "about to delete hc (2)" << endl;
-		delete hc;
+///////////////		delete hc;
 		hc = NULL;
 	    }
 	    return 0;
@@ -1919,6 +2015,39 @@ cerr << "destruction" << endl;
 
 
 
+    // HTTPClientPool ----------------------------------------------------
+
+    HTTPClientPool::HTTPClientPool (int maxpool) :
+	maxpool(maxpool)
+    {	vhc.resize(maxpool);
+	int size = vhc.size();
+	if (size != maxpool) {
+	    cerr << "allocating HTTPClientPool::HTTPClientPool : "
+		 << size << " pointers allocated instead of "
+		 << maxpool << " pointers requested !" << endl;
+	}
+	maxpool = size;	// JDJDJDJD we're loosing the initial requested size ...
+
+	int i;
+	for (i=0 ; i<maxpool ; i++) {
+	    HTTPClient *p = new HTTPClient(true);	    // JDJDJDJD keepalive could be choosed ??
+	    if (p == NULL) {
+		cerr << "allocating HTTPClientPool::HTTPClientPool : "
+		     << i << " HTTPClientPool allocated instead of "
+		     << maxpool << " HTTPClientPool requested !" << endl;
+		break;
+	    }
+	    vhc[i] = p;
+	    available_hc.push_back(vhc[i]);
+	}
+	maxpool = i;
+
+	if (maxpool == 0) {
+	    cerr << "allocating HTTPClientPool::HTTPClientPool : empty pool !!" << endl;
+	}
+    }
+
+    // end of HTTPClientPool ---------------------------------------------
 
 
 
@@ -1936,6 +2065,7 @@ using namespace qiconn;
 using namespace bulkrays;
 
 int main (int nb, char ** cmde) {
+
     string user ("www-data");
     string group;
     string address ("0.0.0.0");
@@ -2127,12 +2257,24 @@ int main (int nb, char ** cmde) {
 ////    hc.register_into_pool (&bulkrayscpool);
 
 
-//    SillyHttpGet voila("http://bulkrays2.nkdn.fr/fiches/TODO");
+// JDJDJDJD this should go away someday !
+if (bulkrays::properties["BulkRays::ownsetoftests"]) {
+
+{string s;
+s = "" ; cerr << "[" << appenduint16tos (0,s) << "]" << endl;
+s = "" ; cerr << "[" << appenduint16tos (1,s) << "]" << endl;
+s = "" ; cerr << "[" << appenduint16tos (10,s) << "]" << endl;
+s = "" ; cerr << "[" << appenduint16tos (1234,s) << "]" << endl;
+s = "" ; cerr << "[" << appenduint16tos (132185434,s) << "]" << endl;;
+}
+
+    new SillyHttpGet("http://bulkrays2.nkdn.fr/fiches/TODO");
     FieldsMap vals;
     vals ["login"]    = "jd";
     vals ["srvfam"]   = "*";
     vals ["passhash"] = "yopYOP";
-//    SillyHttpPut voili("http://127.0.0.1:10082/check", vals);
+    new SillyHttpPut ("http://127.0.0.1:10082/check", vals);
+}
 
     bulkrayscpool.select_loop (timeout);
 
