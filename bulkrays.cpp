@@ -1170,8 +1170,10 @@ if (debugparsereq) {
 			    }
 			    if ((request.req_body[q] == '-') && (request.req_body[q+1] == '-'))	{
 				q += 2;
+// if (debugparsebody) {
 if (l-q != 2)
 errlog() << "reached closing boundary at " << (l - q) << " bytes from end of body" << endl;
+// }
 				break;
 			    }
 			    p = q;
@@ -1424,9 +1426,12 @@ errlog() << "HttppConn::eow_hook called while not in WaitingEOW or HTTPRequestLi
 		(*bcout.out) << "failed : bcp == NULL ?" << endl;
 		bcout.flush();
 	    }
+	} else if (command == "dumpcp") {
+	    (*bcout.out) << *bcp << endl;
 	} else if (command == "help") {
 	    (*bcout.out) << "turnoff         closes the server cleanly" << endl
-			 << "help             this help" << endl
+			 << "help            this help" << endl
+			 << "dumpcp          dumps the connectionpool content" << endl
 		;
 	    bcout.flush();
 	} else {
@@ -1552,6 +1557,7 @@ for (i=0 ; i<256 ; i++) {
 		errlog() << " reconnect_hook in waiting_cbtreat" << endl;
 		break;
 	}
+	closebutkeepregistered();
     }
 
 
@@ -1602,15 +1608,6 @@ for (i=0 ; i<256 ; i++) {
 	
 	if (q != string::npos)
 	    uripath = url.substr(q);
-
-cerr <<        setfill (' ') << setw(45) << url
-     << "|" << setfill (' ') << (userpass ? " # " : "   " )
-     << "|" << setfill (' ') << setw(10) << user
-     << "|" << setfill (' ') << setw(10) << pass
-     << "|" << setfill (' ') << setw(35) << hostport.host
-     << "|" << setfill (' ') << setw(3) << hostport.port
-     << "|" << uripath << "|" << endl;
-
     }
 
 
@@ -1657,9 +1654,7 @@ cerr <<        setfill (' ') << setw(45) << url
 	    s += ':';
 	    appenduint16tos (hostport.port, s);
 	}
-cerr << endl << "********************************************** " << s << endl;
 	s += uripath;
-cerr << "********************************************** " << s << endl << endl;;
 	return s;
     }
 
@@ -1684,6 +1679,8 @@ cerr << "********************************************** " << s << endl << endl;;
 //	    
 //	}
 
+	// JDJDJDJD here, should check that we're not talking to the same host !
+	closebutkeepregistered ();
 	// JDJDJDJD should switch to some non-blocking connect !!!!
 	// ideally inherited from a special Connection parent ???
 	int propfd = init_connect (spurl.hostport.host.c_str(), spurl.hostport.port);
@@ -1691,12 +1688,15 @@ cerr << "********************************************** " << s << endl << endl;;
 	if (propfd < 0)		// JDJDJDJD should log bad connections attempt ????
 	    return false;
 
-	if (cp != NULL) {	// JDJDJDJD qiconn should provide such things no ?
-	    ConnectionPool *ocp = cp;
-	    deregister_from_pool ();
-	    fd = propfd;
-	    register_into_pool (ocp);
-	}
+	isclosedalready = false;
+	notifyfdchange (propfd);
+cerr << *cp << endl;
+//	if (cp != NULL) {	// JDJDJDJD qiconn should provide such things no ?
+//	    ConnectionPool *ocp = cp;
+//	    deregister_from_pool ();
+//	    fd = propfd;
+//	    register_into_pool (ocp);
+//	}
 
 	(*out)	<< "GET " << spurl.uripath << " HTTP/1.1" << endl
 		<< "Accept: */*" << endl;
@@ -1736,6 +1736,9 @@ cerr << "********************************************** " << s << endl << endl;;
 //	    
 //	}
 
+
+	// JDJDJDJD here, should check that we're not talking to the same host !
+	closebutkeepregistered ();
 	// JDJDJDJD should switch to some non-blocking connect !!!!
 	// ideally inherited from a special Connection parent ???
 	int propfd = init_connect (spurl.hostport.host.c_str(), spurl.hostport.port);
@@ -1743,16 +1746,17 @@ cerr << "********************************************** " << s << endl << endl;;
 	if (propfd < 0)
 	    return false;
 
-	if (cp != NULL) {
-cerr << "auto-de-re-enregistration !!!" << endl;
-	    ConnectionPool *ocp = cp;
-	    deregister_from_pool ();
-	    fd = propfd;
-	    register_into_pool (ocp);
-	}
+	isclosedalready = false;
+	notifyfdchange (propfd);
+cerr << *cp << endl;
+//	if (cp != NULL) {
+//	    ConnectionPool *ocp = cp;
+//	    deregister_from_pool ();
+//	    fd = propfd;
+//	    register_into_pool (ocp);
+//	}
 
 
-cerr << "entering" << endl;
 	stringstream s;
 	FieldsMap::const_iterator mi;
 	for (mi=vals.begin() ; mi!=vals.end() ; mi++) {
@@ -1816,7 +1820,6 @@ cerr << "leaving : " << s.str() << endl;
 
 		    response.statuscode = atoi (bufin.substr(p+1).c_str());
 
-cerr << bufin << endl;
 		    state = mimeheadering;
 		}
 		break;
@@ -1828,6 +1831,8 @@ cerr << bufin << endl;
 			state = docreceiving;
 			setrawmode();
 		    } else {
+			if (!keepalive)
+			    closebutkeepregistered ();
 			state = waiting_cbtreat;
 		    }
 		    break;
@@ -1849,6 +1854,8 @@ cerr << bufin << endl;
 			state = docreceiving;
 			setrawmode();
 		    } else {
+			if (!keepalive)
+			    closebutkeepregistered ();
 			state = waiting_cbtreat;
 		    }
 		    break;
@@ -1899,11 +1906,15 @@ cerr << bufin << endl;
 		response.req_body += bufin;
 		response.readbodybytes += bufin.size();
 		if (response.readbodybytes >= response.reqbodylen) {
+if (debugparsebody) {
 errlog() << "ReadBody : " << response.readbodybytes << " read, " << response.reqbodylen << " schedulled.  diff = " << response.readbodybytes-response.reqbodylen << endl;
 cerr << ostreamMap(response.mime,           BEGIN_TERM_IDENT "mime"            END_TERM_IDENT) << endl;
+}
 		    setlinemode();
 		    response.fulltransmission = true;
 		    state = waiting_cbtreat;
+		    if (!keepalive)
+			closebutkeepregistered ();
 		    if (ascb != NULL)
 			ascb->callback (callbackvalue);
 		    break;
@@ -1940,11 +1951,9 @@ cerr << "complain !" << endl;
 	    }
 	    hc->register_into_pool (&bulkrayscpool);
 
-cerr << "here" << endl;
 	    response.clear();
 	    hc->http_get (url, response, this, 42);
 cerr << theurl << endl;
-cerr << "there" << endl;
 	}
 	virtual int callback (int v) {
 	    if (v == 42) {
@@ -1982,11 +1991,9 @@ cerr << "complain !" << endl;
 	    }
 	    hc->register_into_pool (&bulkrayscpool);
 
-cerr << "here" << endl;
 	    response.clear();
 	    hc->http_post_urlencoded (url, vals, response, this, 42);
 cerr << theurl << endl;
-cerr << "there" << endl;
 	}
 	virtual int callback (int v) {
 	    if (v == 42) {
@@ -2085,7 +2092,10 @@ int main (int nb, char ** cmde) {
 			    << "      [--user=[user][:group]]    \\" << endl
 			    << "      [--access_log=filename]    \\" << endl
 			    << "      [--earlylog]               \\" << endl
-			    << "      [--console]" << endl;
+			    << "      [--debugparsereq]          \\" << endl
+			    << "      [--debugparsebody]         \\" << endl
+			    << "      [--console]                \\" << endl
+			    << "      [--properties|-p] [prop[=true]] [prop=value] ";
 	    return 0;
 	} else if (strncmp (cmde[i], "--bind=", 7) == 0) {
 	    string scheme(cmde[i]+7);
@@ -2102,6 +2112,8 @@ int main (int nb, char ** cmde) {
 	    debugearlylog = true;
 	} else if (strncmp (cmde[i], "--debugparsereq", 15) == 0) {
 	    debugparsereq = true;
+	} else if (strncmp (cmde[i], "--debugparsebody", 15) == 0) {
+	    debugparsebody = true;
 	} else if (strncmp (cmde[i], "--access_log=", 13) == 0) {
 	    if (*(cmde[i]+13) != 0) {
 		flogname = cmde[i]+13;
@@ -2259,15 +2271,6 @@ int main (int nb, char ** cmde) {
 
 // JDJDJDJD this should go away someday !
 if (bulkrays::properties["BulkRays::ownsetoftests"]) {
-
-{string s;
-s = "" ; cerr << "[" << appenduint16tos (0,s) << "]" << endl;
-s = "" ; cerr << "[" << appenduint16tos (1,s) << "]" << endl;
-s = "" ; cerr << "[" << appenduint16tos (10,s) << "]" << endl;
-s = "" ; cerr << "[" << appenduint16tos (1234,s) << "]" << endl;
-s = "" ; cerr << "[" << appenduint16tos (132185434,s) << "]" << endl;;
-}
-
     new SillyHttpGet("http://bulkrays2.nkdn.fr/fiches/TODO");
     FieldsMap vals;
     vals ["login"]    = "jd";

@@ -19,9 +19,11 @@ namespace bulkrays {
 
 #ifdef BULKRAYS_H_GLOBINST
     BULKRAYS_H_SCOPE bool debugparsereq = false;
+    BULKRAYS_H_SCOPE bool debugparsebody = false;
     BULKRAYS_H_SCOPE bool debugearlylog = false;
 #else
     BULKRAYS_H_SCOPE bool debugparsereq;
+    BULKRAYS_H_SCOPE bool debugparsebody;
     BULKRAYS_H_SCOPE bool debugearlylog;
 #endif
 
@@ -235,6 +237,7 @@ static ostream * clog;
 	    inline virtual string getname (void) {
 		return "SillyConsoleOut";
 	    }
+	    virtual const char * gettype (void) { return "SillyConsoleOut"; }
     };
 
     class SillyConsoleIn : public BufConnection {
@@ -251,6 +254,7 @@ static ostream * clog;
 	    inline virtual string getname (void) {
 		return name;
 	    }
+	    virtual const char * gettype (void) { return "SillyConsoleIn"; }
     };
 
 
@@ -394,6 +398,7 @@ static int idnum;
 	    virtual void poll (void) {};
 	    virtual void eow_hook (void);
 	    virtual void reconnect_hook (void);
+	    virtual const char * gettype (void) { return "HttppConn"; }
 
 	    void finishtreatment (void);
     };
@@ -424,6 +429,7 @@ int HttppConn::idnum = 0;
 		return new HttppConn (fd, client_addr);
 	    }
 	    virtual void poll (void) {}
+	    virtual const char * gettype (void) { return "HttppBinder"; }
     };
 
     class ASyncCallBack {
@@ -608,6 +614,7 @@ static ostream * clog;
 
 	    virtual void lineread (void);
 	    virtual string getname (void);
+	    virtual const char * gettype (void) { return "HTTPClient"; }
 	    ostream& errlog (void);
 	    ostream& shorterrlog (void);
 	    virtual void reconnect_hook (void);

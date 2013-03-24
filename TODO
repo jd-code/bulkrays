@@ -10,7 +10,7 @@ bulkrays:
     gerer des timouts sur la reception de reqs http SO_RCVTIMEO and SO_SNDTIMEO ?
     [almost done] graceful quit without connection pending : done on sigint or sigquit, flush log missing
     graceful quit (w or wo connection pending) + flush (logs)
-    possibilité d'avoir un catch-all au niveau de Host: bon pour les embeded server
+    [done] possibilité d'avoir un catch-all au niveau de Host: bon pour les embeded server
     passer tt le code en revue pour usage de xmlencode de ttes sorties en html/xml
     [done] fournir des htmlencode
     percent-decode fields names ????
@@ -34,13 +34,16 @@ bulkrays:
     rendre obligatoire les champs de caching
     cookies ?
 
+SillyConsole
+    prompt with listening addresses (reverted ?) ports, session name from properties
+    [done : dumpcp] connectionpool dump
 
 HTTPClient
-    POST
+    [done] POST
     User-Agent
     additionnal mime entries
     keepalive to be finished
-    what to do when lost connection ? overload reconnect_hook
+    [done] what to do when lost connection ? overload reconnect_hook
     time_out at retrieving ?
 
 simplefmap:
