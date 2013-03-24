@@ -5,7 +5,7 @@ CPPFLAGS=-Wnon-virtual-dtor
 INCLUDES=-I./include -I./qiconn/include
 PREFIX=/usr/local
 SHELL=/bin/sh
-VERSION=0.0.4
+VERSION=0.0.5
 
 default: all
 
