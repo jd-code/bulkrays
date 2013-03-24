@@ -24,6 +24,16 @@ namespace bulkrays {
     using namespace std;
     using namespace qiconn;
 
+
+#define BEGIN_TERM_IDENT  "\033[33m"
+#define BEGIN_TERM_VALUE  "\033[36m"
+#define END_TERM_IDENT  "\033[m"
+
+    const char * beginparsereq = "\033[35m";
+    const char * endparsereq = "\033[m";
+    const char * beginparsebody = "\033[36m";
+    const char * endparsebody = "\033[m";
+
     Property::Property (const string &s) : s(s) {
 	i = atoi (s.c_str());
 	if ((s=="true") || (s=="Y") || (s=="y") || (s=="yes") || (s=="YES") || (s=="TRUE"))
@@ -948,15 +958,15 @@ errlog() << "some garbage while waiting eow : {" << hexdump(bufin) << "}" << end
 		    break;
 		}
 		request.method = bufin.substr (0, p);
-if (debugparsereq) shorterrlog() << "method = " << request.method << endl;
+if (debugparsereq) shorterrlog() << beginparsereq << "method = " << request.method << endparsereq << endl;
 		q = p+1, p = bufin.find (' ', q);
 		if (p == string::npos) {
 		    request.req_uri = bufin.substr(q);
 		    populate_reqfields_from_uri (request.req_uri, request.document_uri, request.uri_fields);
 if (debugparsereq) {
-    shorterrlog() << "req_uri = " << request.req_uri << endl;
-    shorterrlog() << "  "<< endl
-	 << ostreamMap(request.uri_fields, "       uri_fields") << endl;
+    shorterrlog() << beginparsereq << "req_uri = " << request.req_uri << endparsereq << endl;
+    shorterrlog() << beginparsereq << "  "<< endl
+	 << ostreamMap(request.uri_fields, "       uri_fields") << endparsereq << endl;
 }
 		    errlog() << "wrong request line (missing version ?): " << bufin << endl;
 		    request.set_relative_expires (60);
@@ -974,15 +984,15 @@ if (debugparsereq) {
 		request.req_uri = bufin.substr (q, p-q);
 		populate_reqfields_from_uri (request.req_uri, request.document_uri, request.uri_fields);
 if (debugparsereq) {
-    shorterrlog() << "req_uri = " << request.req_uri << endl;
-    errlog() << "  "<< endl
-	 << ostreamMap(request.uri_fields, "       uri_fields") << endl;
+    shorterrlog() << beginparsereq << "req_uri = " << request.req_uri << endparsereq << endl;
+    errlog() << beginparsereq << "  "<< endl
+	 << ostreamMap(request.uri_fields, "       uri_fields") << endparsereq << endl;
 }
 		q = p+1, p = bufin.find (' ', q);
 		request.version = bufin.substr(q);
-if (debugparsereq) errlog() << "version = " << request.version << endl;
+if (debugparsereq) errlog() << beginparsereq << "version = " << request.version << endparsereq << endl;
 
-if (debugearlylog) errlog() << endl;
+if (debugearlylog) errlog() << " (entering)" << endl;
 		state = MIMEHeader;
 		mimevalue.clear();		// JDJDJDJD this is rather tricky
 		mimeheadername.clear();		// JDJDJDJD this is rather tricky
@@ -1001,8 +1011,8 @@ if (debugearlylog) errlog() << endl;
 			state = NowTreatRequest;
 		    }
 if (debugparsereq) {
-    errlog() << "  "<< endl
-	 << ostreamMap(request.mime, "      mime") << endl;
+    errlog() << beginparsereq << "  "<< endl
+	 << ostreamMap(request.mime, "      mime") << endparsereq << endl;
 }
 		    break;
 		}
@@ -1036,8 +1046,8 @@ if (debugparsereq) {
 			state = NowTreatRequest;
 		    }
 if (debugparsereq) {
-    errlog() << "  "<< endl
-	 << ostreamMap(request.mime, "      mime") << endl;
+    errlog() << beginparsereq << "  " << endl
+	 << ostreamMap(request.mime, "      mime") << endparsereq << endl;
 }
 		    break;
 		}
@@ -1098,7 +1108,8 @@ if (debugparsereq) {
 		request.readbodybytes += bufin.size();
 		if (request.readbodybytes >= request.reqbodylen) {
 // JDJDJDJD we should not complain if the value matches !
-		    errlog() << "ReadBody : " << request.readbodybytes << " read, " << request.reqbodylen << " schedulled.  diff = " << request.readbodybytes-request.reqbodylen << endl;
+if (debugparsebody || (request.readbodybytes != request.reqbodylen))
+		    errlog() << beginparsebody << "ReadBody : " << request.readbodybytes << " read, " << request.reqbodylen << " schedulled.  diff = " << request.readbodybytes-request.reqbodylen << endparsebody << endl;
 		    mi = request.mime.find ("Content-Type");
 		    if (mi == request.mime.end()) {
 			errlog() << "missing Content-Type with non-empty request body" << endl;	// JDJDJDJD this could have been detected earlier, and the connection shut earlier
@@ -1172,7 +1183,7 @@ if (debugparsereq) {
 				q += 2;
 // if (debugparsebody) {
 if (l-q != 2)
-errlog() << "reached closing boundary at " << (l - q) << " bytes from end of body" << endl;
+errlog() << beginparsebody << "reached closing boundary at " << (l - q) << " bytes from end of body" << endparsebody << endl;
 // }
 				break;
 			    }
@@ -1188,12 +1199,12 @@ errlog() << "reached closing boundary at " << (l - q) << " bytes from end of bod
 				}
 if (debugparsereq) 
 {   ostream &out = errlog();				
-    out << "crlf in use :";
+    out << beginparsereq << "crlf in use :";
     {   size_t i;
 	for(i=0;i<lcr.size();i++)
 	    out << "[" << (int)lcr[i] << "]";
     }
-    out << endl;
+    out << endparsereq << endl;
 }
 			    }
 
@@ -1253,7 +1264,7 @@ if (debugparsereq)
 
 
 		    } else if (mi->second == "application/x-www-form-urlencoded") {
-if (debugparsereq) errlog() << "we've a form post !" << endl;
+if (debugparsereq) errlog() << beginparsereq << "we've a form post !" << endparsereq << endl;
 			populate_reqfields_from_urlencodebody (request.req_body, request.body_fields);
 		    } else {
 			errlog() << "unhandled request-body' Content-Type : " << mi->second << endl;	// JDJDJDJD this could have been detected earlier, and the connection shut earlier
@@ -1278,17 +1289,17 @@ if (debugparsereq) errlog() << "we've a form post !" << endl;
 // errlog << "state=" << state << " : request.reqbodylen=" << request.reqbodylen << " request.readbodybytes=" << request.readbodybytes << endl;
 	if (state == NowTreatRequest) {
 if (debugparsereq) {
-    errlog() << "============================" << endl;
-    errlog() << endl
-	 << ostreamMap(request.body_fields, "      body_fields") << endl;
+    errlog() << beginparsereq << "============================" << endparsereq << endl;
+    errlog() << beginparsereq << endl
+	 << ostreamMap(request.body_fields, "      body_fields") << endparsereq << endl;
 }
 
 	    request.req_fields.import(request.uri_fields);
 	    request.req_fields.import(request.body_fields);
 if (debugparsereq) {
-    errlog() << endl
+    errlog() << beginparsereq << endl
 	 << request.req_fields << endl
-	 << request.content_fields << endl;
+	 << request.content_fields << endparsereq << endl;
 }
 
 	    MimeHeader::iterator mi_host = request.mime.find ("Host");
@@ -1907,8 +1918,8 @@ cerr << "leaving : " << s.str() << endl;
 		response.readbodybytes += bufin.size();
 		if (response.readbodybytes >= response.reqbodylen) {
 if (debugparsebody) {
-errlog() << "ReadBody : " << response.readbodybytes << " read, " << response.reqbodylen << " schedulled.  diff = " << response.readbodybytes-response.reqbodylen << endl;
-cerr << ostreamMap(response.mime,           BEGIN_TERM_IDENT "mime"            END_TERM_IDENT) << endl;
+errlog() << beginparsebody << "ReadBody : " << response.readbodybytes << " read, " << response.reqbodylen << " schedulled.  diff = " << response.readbodybytes-response.reqbodylen << endparsebody << endl;
+cerr << beginparsebody << ostreamMap(response.mime,           BEGIN_TERM_IDENT "mime"            END_TERM_IDENT) << endparsebody << endl;
 }
 		    setlinemode();
 		    response.fulltransmission = true;
