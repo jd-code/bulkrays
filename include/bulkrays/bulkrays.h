@@ -620,14 +620,100 @@ static ostream * clog;
 	    virtual void reconnect_hook (void);
     };
 
-    class HTTPClientPool {
+
+    typedef enum {
+	GET,
+	POST
+    } HTTPMethod;
+
+    class HTTPClientQuery {
 	protected:
-	    vector <HTTPClient*> vhc;
-	    list <HTTPClient*> available_hc;
-	    map <string, HTTPClient*> mhc;
+	    HTTPMethod meth;
+	    const SplitUrl &spurl;
+	    FieldsMap& vals;
+	    HTTPResponse &response;
+	    ASyncCallBack *ascb;
+	    int callbackvalue;
+	public:
+	    HTTPClientQuery (HTTPMethod meth, const SplitUrl &spurl, FieldsMap& vals, HTTPResponse &response, ASyncCallBack *ascb = NULL, int callbackvalue = -1) :
+		meth(meth),
+		spurl(spurl), vals(vals), response(response), ascb(ascb), 
+		callbackvalue(callbackvalue)
+		{}
+    };
+
+    struct VHC {
+	HTTPClient* phc;
+	ASyncCallBack* ascb;
+	int callbackvalue;
+    };
+
+    class HTTPClientPool : public ASyncCallBack {
+	private:
+static FieldsMap emptyvals;
+	protected:
+	    ConnectionPool *cp;
+	    list <HTTPClientQuery> waitinglist;
+	    // vector <HTTPClient*> vhc;
+	    vector <struct VHC> vhc;
+	    list <int> available_hc;
+	    // map <string, HTTPClient*> mhc;   either we add this in another descendant of this class or here later-on ....
 	    int maxpool;
 	public:
-	    HTTPClientPool (int maxpool);
+	    HTTPClientPool (int maxpool, ConnectionPool *cp);
+
+	    inline bool dothequery (HTTPMethod meth, const SplitUrl &spurl, FieldsMap& vals, HTTPResponse &response, ASyncCallBack *ascb = NULL, int callbackvalue = -1) {
+		if (!available_hc.empty()) {
+		    int ivhc = available_hc.back();
+		    vhc.pop_back();
+		    HTTPClient &hc = *(vhc[ivhc].phc);
+		    vhc[ivhc].ascb = ascb;
+		    vhc[ivhc].callbackvalue = callbackvalue;
+
+		    switch (meth) {
+			case GET:
+			    return hc.http_get (spurl, response, this, ivhc);
+			case POST:
+			    return hc.http_post_urlencoded (spurl, vals, response, this, ivhc);
+		    }
+		    cerr << "HTTPClientPool::dothequery : we reached some strange dead-end in the code ?" << endl;
+		    return false;
+		}
+		cerr << "HTTPClientPool::dothequery the pool is exhausted and the queuing isn't functionnal yet !!!" << endl;
+		return false;
+	    }
+
+	    virtual int callback (int ivhc) {
+		if ((ivhc<0) || (ivhc>maxpool)) {
+		    cerr << "HTTPClientPool::callback ivhc=" << ivhc << " is outside boundaries !!" << endl;
+		    return -1;	// JDJDJDJD the meaning of this return value is unclear !!
+		}
+		ASyncCallBack* ascb = vhc[ivhc].ascb;
+		int callbackvalue = vhc[ivhc].callbackvalue;
+		vhc[ivhc].ascb = NULL;
+		vhc[ivhc].callbackvalue = -1;
+		available_hc.push_back (ivhc);
+		if (ascb != NULL) {
+		    return ascb->callback (callbackvalue);
+		}
+		return -1;	// JDJDJDJD the meaning of this return value is unclear !!
+	    }
+
+	    bool http_get (const SplitUrl &spurl, HTTPResponse &response, ASyncCallBack *ascb = NULL, int callbackvalue = -1) {
+		return dothequery (GET, spurl, emptyvals, response, ascb, callbackvalue);
+	    }
+	    bool http_post_urlencoded (const SplitUrl &spurl, FieldsMap& vals, HTTPResponse &response, ASyncCallBack *ascb = NULL, int callbackvalue = -1) {
+		return dothequery (POST, spurl, vals, response, ascb, callbackvalue);
+	    }
+
+	    inline bool http_get (const string &url, HTTPResponse &response, ASyncCallBack *ascb = NULL, int callbackvalue = -1) {
+		SplitUrl spurl(url);
+		return http_get (spurl, response, ascb, callbackvalue);
+	    }
+	    inline bool http_post_urlencoded (const string &url, FieldsMap& vals, HTTPResponse &response, ASyncCallBack *ascb = NULL, int callbackvalue = -1) {
+		SplitUrl spurl(url);
+		return http_post_urlencoded (spurl, vals, response, ascb, callbackvalue);
+	    }
 
 
     };

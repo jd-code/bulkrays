@@ -2035,7 +2035,8 @@ cerr << "destruction" << endl;
 
     // HTTPClientPool ----------------------------------------------------
 
-    HTTPClientPool::HTTPClientPool (int maxpool) :
+    HTTPClientPool::HTTPClientPool (int maxpool, ConnectionPool *cp) :
+	cp(cp),
 	maxpool(maxpool)
     {	vhc.resize(maxpool);
 	int size = vhc.size();
@@ -2055,8 +2056,11 @@ cerr << "destruction" << endl;
 		     << maxpool << " HTTPClientPool requested !" << endl;
 		break;
 	    }
-	    vhc[i] = p;
-	    available_hc.push_back(vhc[i]);
+	    vhc[i].phc = p;
+	    p->register_into_pool(cp);
+	    vhc[i].ascb = NULL;
+	    vhc[i].callbackvalue = -1;
+	    available_hc.push_back(i);
 	}
 	maxpool = i;
 

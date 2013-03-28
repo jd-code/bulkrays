@@ -45,6 +45,12 @@ HTTPClient
     keepalive to be finished
     [done] what to do when lost connection ? overload reconnect_hook
     time_out at retrieving ?
+HTTPClientPool
+    keepalive to be finished
+    seek for the best suitable available connection for keepalive ?
+    usr IP+port for matching keepalive connections ?
+    stats : nbquery, nbpoolmiss, nbconnects, nbtimeouts, nbhangups ... ?
+
 
 simplefmap:
     [done] lire les correspondances terminaisons de fichier -> mime
