@@ -1521,7 +1521,7 @@ for (i=0 ; i<256 ; i++) {
 	       << setw(2) << tm.tm_hour << ':'
 	       << setw(2) << tm.tm_min << ':'
 	       << setw(2) << tm.tm_sec << "] \""
-	    << "[" << fd << " : : HTTPClient::" << prevhost << "] ";
+	    << "[" << fd << " : : HTTPClient::" << "] ";
     }
 
     ostream& HTTPClient::errlog (void) {
@@ -1669,8 +1669,11 @@ for (i=0 ; i<256 ; i++) {
 	return s;
     }
 
-    bool HTTPClient::http_get (const SplitUrl &spurl, HTTPResponse &response, ASyncCallBack *ascb, int callbackvalue) {
+    bool HTTPClient::http_get (const SplitUrl &spurl, HTTPResponse &response, ASyncCallBack *ascb, FaitLaForce callbackvalue) {
 	presponse = &response;
+	bool wemaykeepconnected = false;
+	if (keepalive && (fd >= 0) && (spurl.hostport == curspliturl.hostport))
+	    wemaykeepconnected = true;
 	curspliturl = spurl;
 //	response.clear();
 	HTTPClient::ascb = ascb;
@@ -1691,23 +1694,19 @@ for (i=0 ; i<256 ; i++) {
 //	}
 
 	// JDJDJDJD here, should check that we're not talking to the same host !
-	closebutkeepregistered ();
-	// JDJDJDJD should switch to some non-blocking connect !!!!
-	// ideally inherited from a special Connection parent ???
-	int propfd = init_connect (spurl.hostport.host.c_str(), spurl.hostport.port);
+	if (!wemaykeepconnected) {
+	    closebutkeepregistered ();
+	    // JDJDJDJD should switch to some non-blocking connect !!!!
+	    // ideally inherited from a special Connection parent ???
+	    int propfd = init_connect (spurl.hostport.host.c_str(), spurl.hostport.port);
 
-	if (propfd < 0)		// JDJDJDJD should log bad connections attempt ????
-	    return false;
+	    if (propfd < 0)		// JDJDJDJD should log bad connections attempt ????
+		return false;
 
-	isclosedalready = false;
-	notifyfdchange (propfd);
+	    isclosedalready = false;
+	    notifyfdchange (propfd);
 cerr << *cp << endl;
-//	if (cp != NULL) {	// JDJDJDJD qiconn should provide such things no ?
-//	    ConnectionPool *ocp = cp;
-//	    deregister_from_pool ();
-//	    fd = propfd;
-//	    register_into_pool (ocp);
-//	}
+	}
 
 	(*out)	<< "GET " << spurl.uripath << " HTTP/1.1" << endl
 		<< "Accept: */*" << endl;
@@ -1725,8 +1724,11 @@ cerr << *cp << endl;
     }
 
     
-    bool HTTPClient::http_post_urlencoded (const SplitUrl &spurl, FieldsMap& vals, HTTPResponse &response, ASyncCallBack *ascb, int callbackvalue) {
+    bool HTTPClient::http_post_urlencoded (const SplitUrl &spurl, FieldsMap& vals, HTTPResponse &response, ASyncCallBack *ascb, FaitLaForce callbackvalue) {
 	presponse = &response;
+	bool wemaykeepconnected = false;
+	if (keepalive && (fd >= 0) && (spurl.hostport == curspliturl.hostport))
+	    wemaykeepconnected = true;
 	curspliturl = spurl;
 //	response.clear();
 	HTTPClient::ascb = ascb;
@@ -1749,24 +1751,19 @@ cerr << *cp << endl;
 
 
 	// JDJDJDJD here, should check that we're not talking to the same host !
-	closebutkeepregistered ();
-	// JDJDJDJD should switch to some non-blocking connect !!!!
-	// ideally inherited from a special Connection parent ???
-	int propfd = init_connect (spurl.hostport.host.c_str(), spurl.hostport.port);
+	if (!wemaykeepconnected) {
+	    closebutkeepregistered ();
+	    // JDJDJDJD should switch to some non-blocking connect !!!!
+	    // ideally inherited from a special Connection parent ???
+	    int propfd = init_connect (spurl.hostport.host.c_str(), spurl.hostport.port);
 
-	if (propfd < 0)
-	    return false;
+	    if (propfd < 0)
+		return false;
 
-	isclosedalready = false;
-	notifyfdchange (propfd);
+	    isclosedalready = false;
+	    notifyfdchange (propfd);
 cerr << *cp << endl;
-//	if (cp != NULL) {
-//	    ConnectionPool *ocp = cp;
-//	    deregister_from_pool ();
-//	    fd = propfd;
-//	    register_into_pool (ocp);
-//	}
-
+	}
 
 	stringstream s;
 	FieldsMap::const_iterator mi;
@@ -1966,8 +1963,8 @@ cerr << "complain !" << endl;
 	    hc->http_get (url, response, this, 42);
 cerr << theurl << endl;
 	}
-	virtual int callback (int v) {
-	    if (v == 42) {
+	virtual int callback (FaitLaForce v) {
+	    if (v.i == 42) {
 		if (hc == NULL) return -1;
 		cerr << "--------------------" << endl
 		     << theurl << endl
@@ -2006,8 +2003,8 @@ cerr << "complain !" << endl;
 	    hc->http_post_urlencoded (url, vals, response, this, 42);
 cerr << theurl << endl;
 	}
-	virtual int callback (int v) {
-	    if (v == 42) {
+	virtual int callback (FaitLaForce v) {
+	    if (v.i == 42) {
 		if (hc == NULL) return -1;
 		cerr << "--------------------" << endl
 		     << theurl << endl

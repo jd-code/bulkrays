@@ -1,6 +1,8 @@
 #ifndef INCL_BULKRAYS_H
 #define INCL_BULKRAYS_H
 
+#include <string.h> // memcpy
+
 #include <iomanip>
 #include <vector>
 
@@ -432,11 +434,41 @@ int HttppConn::idnum = 0;
 	    virtual const char * gettype (void) { return "HttppBinder"; }
     };
 
+    union FaitLaForce;
+
+    class ASyncCallBack;
+
+    typedef int (ASyncCallBack::* MFP)(int);  // typical generic member function pointer for storage only. has to be casted afterward
+
+    union FaitLaForce {
+	public:
+	    int i;
+	    void *p;
+	    const char *s;
+	    // int (FaitLaForce::* mfp)(int);
+	    MFP mfp;
+
+	    FaitLaForce (int i) : i(i) {}
+	    FaitLaForce (void *p) : p(p) {}
+	    FaitLaForce (const char *s) : s(s) {}
+	    // FaitLaForce (MFP mfp) : mfp(mfp) {}
+	    FaitLaForce (void) { i = 0; }
+	    // template <class T> FaitLaForce (T p) : mfp((MFP)p) {}
+	    template <class T> FaitLaForce (T p) {
+		memcpy ((void *)&mfp, (const void*)&p, sizeof(p));   // JDJDJDJD missing size_control
+	    }
+	    template <class T> void get (T &p) {
+		memcpy ((void*)&p, (const void *)&mfp, sizeof(p));   // JDJDJDJD missing size_control
+	    }
+		
+    };
+
+
     class ASyncCallBack {
 	public:
 	    ASyncCallBack () {}
 	    virtual ~ASyncCallBack () {}
-	    virtual int callback (int v) = 0;
+	    virtual int callback (FaitLaForce v) = 0;
     };
 
     class HTTPResponse
@@ -526,6 +558,14 @@ static ostream * clog;
 		port = o.port;
 		return *this;
 	    } 
+
+	    bool operator == (HTTPConn const &o) const {
+		if (o.port != port)
+		    return false;
+		if (o.host != host)
+		    return false;
+		return true;
+	    }
     };
     
     class SplitUrl {
@@ -587,8 +627,7 @@ static ostream * clog;
 	    bool keepalive;
 	    time_t timeout;
 	    ASyncCallBack *ascb;
-	    int callbackvalue;
-	    string prevhost;
+	    FaitLaForce callbackvalue;
 	    stringstream raw;
 
 	    string mimevalue, mimeheadername;	// JDJDJDJD where is the cleaning between two reqs ?
@@ -600,14 +639,22 @@ static ostream * clog;
 	public:
 	    HTTPClient (bool keepalive = true);
 	    virtual ~HTTPClient (void);
-	    bool http_get (const SplitUrl &spurl, HTTPResponse &response, ASyncCallBack *ascb = NULL, int callbackvalue = -1);
-	    bool http_post_urlencoded (const SplitUrl &spurl, FieldsMap& vals, HTTPResponse &response, ASyncCallBack *ascb = NULL, int callbackvalue = -1);
+	    bool http_get (const SplitUrl &spurl, HTTPResponse &response, ASyncCallBack *ascb = NULL, FaitLaForce callbackvalue = -1);
+	    bool http_post_urlencoded (const SplitUrl &spurl, FieldsMap& vals, HTTPResponse &response, ASyncCallBack *ascb = NULL, FaitLaForce callbackvalue = -1);
 
-	    inline bool http_get (const string &url, HTTPResponse &response, ASyncCallBack *ascb = NULL, int callbackvalue = -1) {
+//	    template <class T> bool http_get (const string &url, HTTPResponse &response, ASyncCallBack *ascb = NULL, T callbackvalue = -1) {
+//		SplitUrl spurl(url);
+//		return http_get (spurl, response, ascb, (FaitLaForce)callbackvalue);
+//	    }
+//	    template <class T> bool http_post_urlencoded (const SplitUrl &spurl, FieldsMap& vals, HTTPResponse &response, ASyncCallBack *ascb = NULL, T callbackvalue = -1) {
+//		return the_http_post_urlencoded (spurl, vals, response, ascb, (FaitLaForce)callbackvalue);
+//	    }
+
+	    inline bool http_get (const string &url, HTTPResponse &response, ASyncCallBack *ascb = NULL, FaitLaForce callbackvalue = -1) {
 		SplitUrl spurl(url);
 		return http_get (spurl, response, ascb, callbackvalue);
 	    }
-	    inline bool http_post_urlencoded (const string &url, FieldsMap& vals, HTTPResponse &response, ASyncCallBack *ascb = NULL, int callbackvalue = -1) {
+	    inline bool http_post_urlencoded (const string &url, FieldsMap& vals, HTTPResponse &response, ASyncCallBack *ascb = NULL, FaitLaForce callbackvalue = -1) {
 		SplitUrl spurl(url);
 		return http_post_urlencoded (spurl, vals, response, ascb, callbackvalue);
 	    }
@@ -618,6 +665,14 @@ static ostream * clog;
 	    ostream& errlog (void);
 	    ostream& shorterrlog (void);
 	    virtual void reconnect_hook (void);
+
+//	    template <class T> bool http_get (const SplitUrl &spurl, HTTPResponse &response, ASyncCallBack *ascb=NULL, T callbackvalue=-1) {
+//		return the_http_get (spurl, response, ascb, (FaitLaForce)callbackvalue);
+//	    }
+//	    template <class T> bool http_post_urlencoded (const string &url, FieldsMap& vals, HTTPResponse &response, ASyncCallBack *ascb = NULL, T callbackvalue = -1) {
+//		SplitUrl spurl(url);
+//		return http_post_urlencoded (spurl, vals, response, ascb, (FaitLaForce)callbackvalue);
+//	    }
     };
 
 
@@ -633,9 +688,9 @@ static ostream * clog;
 	    FieldsMap& vals;
 	    HTTPResponse &response;
 	    ASyncCallBack *ascb;
-	    int callbackvalue;
+	    FaitLaForce callbackvalue;
 	public:
-	    HTTPClientQuery (HTTPMethod meth, const SplitUrl &spurl, FieldsMap& vals, HTTPResponse &response, ASyncCallBack *ascb = NULL, int callbackvalue = -1) :
+	    HTTPClientQuery (HTTPMethod meth, const SplitUrl &spurl, FieldsMap& vals, HTTPResponse &response, ASyncCallBack *ascb = NULL, FaitLaForce callbackvalue = -1) :
 		meth(meth),
 		spurl(spurl), vals(vals), response(response), ascb(ascb), 
 		callbackvalue(callbackvalue)
@@ -645,7 +700,7 @@ static ostream * clog;
     struct VHC {
 	HTTPClient* phc;
 	ASyncCallBack* ascb;
-	int callbackvalue;
+	FaitLaForce callbackvalue;
     };
 
     class HTTPClientPool : public ASyncCallBack {
@@ -662,7 +717,7 @@ static FieldsMap emptyvals;
 	public:
 	    HTTPClientPool (int maxpool, ConnectionPool *cp);
 
-	    inline bool dothequery (HTTPMethod meth, const SplitUrl &spurl, FieldsMap& vals, HTTPResponse &response, ASyncCallBack *ascb = NULL, int callbackvalue = -1) {
+	    inline bool dothequery (HTTPMethod meth, const SplitUrl &spurl, FieldsMap& vals, HTTPResponse &response, ASyncCallBack *ascb = NULL, FaitLaForce callbackvalue = -1) {
 		if (!available_hc.empty()) {
 		    int ivhc = available_hc.back();
 		    vhc.pop_back();
@@ -683,13 +738,14 @@ static FieldsMap emptyvals;
 		return false;
 	    }
 
-	    virtual int callback (int ivhc) {
+	    virtual int callback (FaitLaForce v) {
+		int ivhc = v.i;
 		if ((ivhc<0) || (ivhc>maxpool)) {
 		    cerr << "HTTPClientPool::callback ivhc=" << ivhc << " is outside boundaries !!" << endl;
 		    return -1;	// JDJDJDJD the meaning of this return value is unclear !!
 		}
 		ASyncCallBack* ascb = vhc[ivhc].ascb;
-		int callbackvalue = vhc[ivhc].callbackvalue;
+		FaitLaForce callbackvalue = vhc[ivhc].callbackvalue;
 		vhc[ivhc].ascb = NULL;
 		vhc[ivhc].callbackvalue = -1;
 		available_hc.push_back (ivhc);
@@ -699,18 +755,35 @@ static FieldsMap emptyvals;
 		return -1;	// JDJDJDJD the meaning of this return value is unclear !!
 	    }
 
-	    bool http_get (const SplitUrl &spurl, HTTPResponse &response, ASyncCallBack *ascb = NULL, int callbackvalue = -1) {
+//	    template <class T> bool http_get (const SplitUrl &spurl, HTTPResponse &response, ASyncCallBack *ascb = NULL, T callbackvalue = -1) {
+//		return dothequery (GET, spurl, emptyvals, response, ascb, (FaitLaForce)callbackvalue);
+//	    }
+//	    template <class T> bool http_post_urlencoded (const SplitUrl &spurl, FieldsMap& vals, HTTPResponse &response, ASyncCallBack *ascb = NULL, T callbackvalue = -1) {
+//		return dothequery (POST, spurl, vals, response, ascb, (FaitLaForce)callbackvalue);
+//	    }
+//
+//	    template <class T> inline bool http_get (const string &url, HTTPResponse &response, ASyncCallBack *ascb = NULL, T callbackvalue = -1) {
+//		SplitUrl spurl(url);
+//		return http_get (spurl, response, ascb, (FaitLaForce)callbackvalue);
+//	    }
+//	    template <class T> inline bool http_post_urlencoded (const string &url, FieldsMap& vals, HTTPResponse &response, ASyncCallBack *ascb = NULL, T callbackvalue = -1) {
+//		SplitUrl spurl(url);
+//		return http_post_urlencoded (spurl, vals, response, ascb, (FaitLaForce)callbackvalue);
+//	    }
+
+
+	    bool http_get (const SplitUrl &spurl, HTTPResponse &response, ASyncCallBack *ascb = NULL, FaitLaForce callbackvalue = -1) {
 		return dothequery (GET, spurl, emptyvals, response, ascb, callbackvalue);
 	    }
-	    bool http_post_urlencoded (const SplitUrl &spurl, FieldsMap& vals, HTTPResponse &response, ASyncCallBack *ascb = NULL, int callbackvalue = -1) {
+	    bool http_post_urlencoded (const SplitUrl &spurl, FieldsMap& vals, HTTPResponse &response, ASyncCallBack *ascb = NULL, FaitLaForce callbackvalue = -1) {
 		return dothequery (POST, spurl, vals, response, ascb, callbackvalue);
 	    }
 
-	    inline bool http_get (const string &url, HTTPResponse &response, ASyncCallBack *ascb = NULL, int callbackvalue = -1) {
+	    inline bool http_get (const string &url, HTTPResponse &response, ASyncCallBack *ascb = NULL, FaitLaForce callbackvalue = -1) {
 		SplitUrl spurl(url);
 		return http_get (spurl, response, ascb, callbackvalue);
 	    }
-	    inline bool http_post_urlencoded (const string &url, FieldsMap& vals, HTTPResponse &response, ASyncCallBack *ascb = NULL, int callbackvalue = -1) {
+	    inline bool http_post_urlencoded (const string &url, FieldsMap& vals, HTTPResponse &response, ASyncCallBack *ascb = NULL, FaitLaForce callbackvalue = -1) {
 		SplitUrl spurl(url);
 		return http_post_urlencoded (spurl, vals, response, ascb, callbackvalue);
 	    }
