@@ -15,6 +15,7 @@
 
 #include <unistd.h>
 #include <fcntl.h>
+#include <sys/prctl.h>
 
 #define QICONN_H_GLOBINST
 #define BULKRAYS_H_GLOBINST
@@ -2198,6 +2199,15 @@ int main (int nb, char ** cmde) {
 	    cerr << "could not change uid privileges ? " << strerror(e) << endl;
 	    return -1;
 	}
+
+cerr << "prctl (PR_GET_DUMPABLE) = " << prctl (PR_GET_DUMPABLE) << endl;
+	if (prctl (PR_SET_DUMPABLE, 1) != 0) {
+	    int e = errno;
+	    cerr << "could not set core dump ability ? " << strerror(e) << endl;
+	    return -1;
+	}
+cerr << "prctl (PR_GET_DUMPABLE) = " << prctl (PR_GET_DUMPABLE) << endl;
+cerr << cmde[0] << " started, pid=" << getpid() << endl;
     }
 
 
