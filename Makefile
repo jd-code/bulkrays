@@ -10,7 +10,7 @@ VERSION=0.0.6
 
 default: all
 
-all: bulkrays
+all: hcpp2cpp bulkrays
 
 allstrip: all
 	strip bulkrays hcpp2cpp
@@ -42,7 +42,7 @@ include/bulkrays/bulkrays.h: qiconn/include/qiconn/qiconn.h
 
 clean:
 	rm -f *.cc
-	rm -f *.o bulkrays
+	rm -f *.o bulkrays hcpp2cpp
 	rm -rf bulkrays-doc
 	( cd qiconn ; make clean )
 
@@ -62,14 +62,14 @@ bootstrap.o: bootstrap.cpp include/bulkrays/bulkrays.h
 testsite.o: testsite.cpp include/bulkrays/bulkrays.h
 	g++ ${DEBUG} ${CPPFLAGS} ${INCLUDES} -DBULKRAYSVERSION="\"${VERSION}\"" -Wall -c testsite.cpp
 
-simplefmap.o: simplefmap.cpp include/bulkrays/bulkrays.h
-	g++ ${DEBUG} ${CPPFLAGS} ${INCLUDES} -Wall -c simplefmap.cpp
+simplefmap.o: simplefmap.cc include/bulkrays/bulkrays.h
+	g++ ${DEBUG} ${CPPFLAGS} ${INCLUDES} -Wall -c simplefmap.cc
 
 # bulkrays.cpp: bulkrays.hcpp hcpp2cpp
 
 #	./hcpp2cpp bulkrays.hcpp -o bulkrays.cpp
 
 
-%.cc: %.hcpp
+%.cc: %.hcpp hcpp2cpp
 	./hcpp2cpp $< -o $@
 

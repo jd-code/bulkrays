@@ -319,91 +319,101 @@ req.errlog() << "simplefmap::output opendir(" << canonfname << " ) gave error " 
 
 
 		stringstream s;
-		s << "<!DOCTYPE html " << endl
-		  << "     PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\"" << endl
-		  << "     \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd\">" << endl
-		  << "<html xmlns='http://www.w3.org/1999/xhtml'>" << endl;
-
-		s << "<head>" << endl
-		  << " <title>" << xmlencode (uridecode) << "</title>" << endl
-		  << " <link rel=\"stylesheet\" type=\"text/css\" href=\"/stylesheet.css\">" << endl;
+		s << 
+{{<!DOCTYPE html 
+     PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+     "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns='http://www.w3.org/1999/xhtml'>
+<head>
+ <title>}} << xmlencode (uridecode) << {{</title>
+ <link rel=\"stylesheet\" type=\"text/css\" href=\"/stylesheet.css\">
+}};
 
 	list<direntry>::iterator li;
-	s << "<script>" << endl
-	  << "  var nextsortmtimeasc = false," << endl
-	  << "	    nextsortnameasc = true," << endl
-	  << "	    nextsortsizeasc = false;" << endl;
-
+	s <<
+{{<script>
+  var nextsortmtimeasc = false,
+	    nextsortnameasc = true,
+	    nextsortsizeasc = false;
+}};
 	thedir.sort(direntry_cmp_size);
-	s << "var bysize = new Array(";
+	s << {{var bysize = new Array(}};
 	for (li=thedir.begin(); li!=thedir.end(); li++)
-	    s << li->id << ',';
-	s << "null);" << endl;
+	    s << li->id << {{,}};
+	s << {{null);}} << endl;
 
 	thedir.sort(direntry_cmp_mtime);
-	s << "var bymtime = new Array(";
+	s << {{var bymtime = new Array(}};
 	for (li=thedir.begin(); li!=thedir.end(); li++)
-	    s << li->id << ',';
-	s << "null);" << endl;
+	    s << li->id << {{,}};
+	s << {{null);}} << endl;
 
 	thedir.sort(direntry_cmp_name);
-	s << "var byname = new Array(";
+	s << {{var byname = new Array(}};
 	for (li=thedir.begin(); li!=thedir.end(); li++)
-	    s << li->id << ',';
-	s << "null);" << endl;
+	    s << li->id << {{,}};
+	s << {{null);}} << endl;
 
+	s << {{
 
-	s << "function sortBySize() {" << endl
-	  << "	if (nextsortsizeasc) {" << endl
-	  << "	    for (i in bysize)" << endl
-	  << "		if (bysize[i] != null) document.getElementById('thelist').appendChild(document.getElementById(bysize[i]));" << endl
-	  << "	} else {" << endl
-	  << "	    for (i=bysize.length-1 ; i>=0 ; i--)" << endl
-	  << "		if (bysize[i] != null) document.getElementById('thelist').appendChild(document.getElementById(bysize[i]));" << endl
-	  << "	}" << endl
-	  << "	nextsortsizeasc = !nextsortsizeasc;" << endl
-	  << "}" << endl;
-	s << "function sortByName() {" << endl
-	  << "	if (nextsortnameasc) {" << endl
-	  << "	    for (i in byname)" << endl
-	  << "		if (byname[i] != null) document.getElementById('thelist').appendChild(document.getElementById(byname[i]));" << endl
-	  << "	} else {" << endl
-	  << "	    for (i=byname.length-1 ; i>=0 ; i--)" << endl
-	  << "		if (byname[i] != null) document.getElementById('thelist').appendChild(document.getElementById(byname[i]));" << endl
-	  << "	}" << endl
-	  << "	nextsortnameasc = !nextsortnameasc;" << endl
-	  << "}" << endl;
-	s << "function sortByMTime() {" << endl
-	  << "	if (nextsortmtimeasc) {" << endl
-	  << "	    for (i in bymtime)" << endl
-	  << "		if (bymtime[i] != null) document.getElementById('thelist').appendChild(document.getElementById(bymtime[i]));" << endl
-	  << "	} else {" << endl
-	  << "	    for (i=bymtime.length-1 ; i>=0 ; i--)" << endl
-	  << "		if (bymtime[i] != null) document.getElementById('thelist').appendChild(document.getElementById(bymtime[i]));" << endl
-	  << "	}" << endl
-	  << "	nextsortmtimeasc = !nextsortmtimeasc;" << endl
-	  << "}" << endl;
-	s << "</script>" << endl
-	  << "</head>" << endl;
-
-		s << "<body>" << endl;
-		s << "<h1>" << req.document_uri << "</h1>" << endl;
+function sortBySize() {
+	if (nextsortsizeasc) {
+	    for (i in bysize)
+		if (bysize[i] != null) document.getElementById('thelist').appendChild(document.getElementById(bysize[i]));
+	} else {
+	    for (i=bysize.length-1 ; i>=0 ; i--)
+		if (bysize[i] != null) document.getElementById('thelist').appendChild(document.getElementById(bysize[i]));
+	}
+	nextsortsizeasc = !nextsortsizeasc;
+}" << endl;
+function sortByName() {
+	if (nextsortnameasc) {
+	    for (i in byname)
+		if (byname[i] != null) document.getElementById('thelist').appendChild(document.getElementById(byname[i]));
+	} else {
+	    for (i=byname.length-1 ; i>=0 ; i--)
+		if (byname[i] != null) document.getElementById('thelist').appendChild(document.getElementById(byname[i]));
+	}
+	nextsortnameasc = !nextsortnameasc;
+}" << endl;
+function sortByMTime() {
+	if (nextsortmtimeasc) {
+	    for (i in bymtime)
+		if (bymtime[i] != null) document.getElementById('thelist').appendChild(document.getElementById(bymtime[i]));
+	} else {
+	    for (i=bymtime.length-1 ; i>=0 ; i--)
+		if (bymtime[i] != null) document.getElementById('thelist').appendChild(document.getElementById(bymtime[i]));
+	}
+	nextsortmtimeasc = !nextsortmtimeasc;
+}
+</script>
+</head>
+<body>
+<h1>}} << req.document_uri << {{</h1>
+}};
 
 	{   list<direntry>::iterator li;
-	    s << "<table id=\"thelist\">" << endl;
-	    s << "<tr class=\"flistentry\" id=\"legend\">"
-	      << "<td class=\"listlegend\"><a href=\"javascript:void(0)\" onclick=\"sortBySize()\">size</a></td>"
-	      << "<td class=\"listlegend\"><a href=\"javascript:void(0)\" onclick=\"sortByMTime()\">mtime</a></td>"
-	      << "<td class=\"listlegend\"><a href=\"javascript:void(0)\" onclick=\"sortByName()\">name</a></td></tr>" << endl;
+	    s << {{
+<table id="thelist">
+<tr class="flistentry" id="legend">
+ <td class="listlegend"><a href="javascript:void(0)" onclick="sortBySize()">size</a></td>
+ <td class="listlegend"><a href="javascript:void(0)" onclick="sortByMTime()">mtime</a></td>
+ <td class="listlegend"><a href="javascript:void(0)" onclick="sortByName()">name</a></td>
+</tr>
+}};
 	    for (li=thedir.begin() ; li!=thedir.end() ; li++) {
-		s << "<tr class=\"flistentry\" id=\"" << li->id << "\">"
-		  << *li << "</tr>" << endl;
+		s << {{<tr class="flistentry" id="}} << li->id << {{">}}
+		  << *li << {{</tr>}} << endl;
 	    }
-	    s << "</table>" << endl;
+	    s << {{
+</table>
+}};
 	}
 
-		s << "</body>" << endl;
-		s << "</html>" << endl;
+		s << {{
+</body>
+</html>
+}};
 
 		req.set_contentlength (s.str().size());
 		req.set_relative_expires (20);	    // JDJDJDJD this should be tunable ?
