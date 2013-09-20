@@ -8,6 +8,9 @@
 
 using namespace std;
 
+bool debug = false;
+
+
 bool atbeginingosstring = true;
 
 void escape (ostream & out, char c) {
@@ -124,7 +127,7 @@ int main (int nb, char ** cmde) {
 		 << strerror(e) << endl;
 	    return 1;
 	}
-
+if (debug)
 cerr << "parsing " << cmde[i] << " ..." << endl;
 	out << "# 1 \"" << cmde[i] << "\"" << endl;
 	if (!parse (in, out))

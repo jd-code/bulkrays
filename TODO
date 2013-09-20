@@ -59,5 +59,9 @@ simplefmap:
 testsite:
     mettre a jour avec generation des headers propre et suppression du -DBULKRAYSVERSION
 
+
+hcpp2cpp:
+    [done] quoting the '\' char !! 
+
 hcpp.vim:
     <style> .bomb64 { background: url(data:image/gif;base64,}} doesnt highlight back to cpp
