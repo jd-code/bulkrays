@@ -1382,7 +1382,7 @@ if (debugparsereq) {
 	// BuggyConn aren't logged twice here ...
 	if (state == WaitingEOW) {  // probably a shortened transmission !
 	    gettimeofday(&ending_WaitingEOW, NULL);
-	    request.statuscode = 999;	    // JDJDJDJD don't really know what to do here 
+	    request.statuscode += 999000;	    // JDJDJDJD don't really know what to do here 
 	    request.logger();
 	    request.clear ();
 	}
