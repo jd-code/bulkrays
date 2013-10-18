@@ -171,7 +171,13 @@ namespace simplefmap {
 	~FMap_TreatRequest () {}
 
 	virtual TReqResult output (ostream &cout, HTTPRequest &req) {
-	    if (req.method != "GET") {
+	    bool isGET = false;
+	    bool isHEAD = false;
+	    if (req.method == "GET") {
+		isGET = true;
+	    } else if (req.method == "HEAD") {
+		isHEAD = true;
+	    } else {
 		req.set_relative_expires (60);
 		return error (cout, req, 405);	// JDJDJDJD The response MUST include an Allow header containing a list of valid methods for the requested resource. 
 	    }
@@ -220,6 +226,7 @@ namespace simplefmap {
 		    stringstream err;
 		    err << "simplefmap : FMap_TreatRequest::output : file " << canonfname << " fells outside of rootdir : " << rootdir;
 		    req.set_relative_expires (60);
+		    free (canonfname);
 		    return error (cout, req, 403, NULL, "file permission denied (001b)");
 		}
 	    }
@@ -231,14 +238,17 @@ req.errlog() << "simplefmap::output lstat(" << canonfname << ") gave error " << 
                 switch (e) {
 		    case EACCES:
 			req.set_relative_expires (60);
+			free (canonfname);
 			return error (cout, req, 403, NULL, "file permission denied (002)");
 
 		    case ENOENT:
 			req.set_relative_expires (20);
+			free (canonfname);
 			return error (cout, req, 404, NULL, "Not Found (002f)");
 
 		    case ENOTDIR:
 			req.set_relative_expires (20);
+			free (canonfname);
 			return error (cout, req, 404, NULL, "Not found (002d)");
 
 		    case ENAMETOOLONG:
@@ -247,31 +257,58 @@ req.errlog() << "simplefmap::output lstat(" << canonfname << ") gave error " << 
 		    default:
 			req.errlog() << "simplefmap::output lstat(" << canonfname << ") gave error " << e << " " << strerror (e) << endl;
 			req.set_relative_expires (60);
+			free (canonfname);
 			return error (cout, req, 500);
 		}
 	    }
 	    if (  !( ((S_IFREG & statbuf.st_mode) != 0) || ((S_IFDIR & statbuf.st_mode) != 0) )   )	{   // we didn't reach a file or a directory (maybe a link though, but we don't follow links)
 		req.set_relative_expires (60);
+		free (canonfname);
 		return error (cout, req, 403, NULL, "file permission denied (003)");
 	    }
 
-	    if ((S_IFDIR & statbuf.st_mode) != 0) {
-		DIR * fdir = opendir (canonfname);
+	    if ((S_IFDIR & statbuf.st_mode) != 0) { // we found a directory
 
+		if (isHEAD) {	// we don't give interesting results on such things yet ...
+//  HTTP/1.0 200 OK
+//  Date: Fri, 18 Oct 2013 17:56:16 GMT
+//  Expires: -1
+//  Cache-Control: private, max-age=0
+//  Content-Type: text/html; charset=ISO-8859-1
+//  Set-Cookie: NID=67=A0gxHvH3cp0D0WjpyD7XoXn3WS5niEQ0SYij_-CT2FnFiT9LNplgH03comnilUyRb89vCdQK-l6HeedAW6mkRpv8s5Uq5xHPn54cMG5x4Muo04vGRNIl8ttgDdvDQZlt; expires=Sat, 19-Apr-2014 17:56:16 GMT; path=/; domain=.; HttpOnly
+//  P3P: CP="This is not a P3P policy! See http://www.google.com/support/accounts/bin/answer.py?hl=en&answer=151657 for more info."
+//  Server: gws
+//  X-XSS-Protection: 1; mode=block
+//  X-Frame-Options: SAMEORIGIN
+//  Alternate-Protocol: 80:quic
+//  Connection: Keep-Alive
+//  Proxy-Connection: Keep-Alive
+
+		    req.outmime["Content-Type"] = "text/html;charset=UTF-8";
+		    req.set_relative_expires (20);	    // JDJDJDJD this should be tunable ?
+		    req.publish_header();
+		    free (canonfname);
+		    return TRCompleted;
+		}
+
+		DIR * fdir = opendir (canonfname);
 		if (fdir == NULL) {
 		    int e = errno;
 req.errlog() << "simplefmap::output opendir(" << canonfname << " ) gave error " << e << " " << strerror (e) << endl;  // this is debug JDJDJDJD we should have an uniform way to log such things
 		    switch (e) {
 			case EACCES:
 			    req.set_relative_expires (60);
+			    free (canonfname);
 			    return error (cout, req, 403, NULL, "file permission denied (003b)");
 
 			case ENOENT:
 			    req.set_relative_expires (20);
+			    free (canonfname);
 			    return error (cout, req, 404, NULL, "Not Found (003)");
 
 			default:
 			    req.set_relative_expires (60);
+			    free (canonfname);
 			    return error (cout, req, 503, NULL, "weidries occured (001)");
 		    }
 		}
@@ -281,6 +318,7 @@ req.errlog() << "simplefmap::output opendir(" << canonfname << " ) gave error " 
 		if (entryp == NULL) {
 		    req.errlog() << "simplefmap::output could not alloc struct dirent * (size = " << (int)dirent_len << ")" << endl;
 		    req.set_relative_expires (60);
+		    free (canonfname);
 		    return error (cout, req, 503, NULL, "weidries occured (002)");
 		}
 
@@ -419,7 +457,41 @@ function sortByMTime() {
 		req.set_relative_expires (20);	    // JDJDJDJD this should be tunable ?
 		req.publish_header();
 		cout << s.str();
-	    } else {
+	    } else { // we found a file
+		string mime_type;
+		size_t pdot = req.document_uri.rfind('.');
+		if (pdot == string::npos) {
+		    mime_type = "text/plain";
+		} else {
+		    string terminaison = req.document_uri.substr(pdot + 1);
+		    const string * pmt = mimetypes.getmimefromterminaison (terminaison);
+		    if (pmt == NULL)
+			mime_type = "text/plain";
+		    else
+			mime_type = *pmt;
+		}
+
+		if (isHEAD) {	// we try to give interesting results
+// HTTP/1.0 200 OK
+// Date: Mon, 05 May 2008 00:33:14 GMT
+// Server: Apache/2.0.52 (Red Hat)
+// Accept-Ranges: bytes
+// Content-Length: 3980
+// Content-Type: image/jpeg
+
+		    req.statuscode = 200;
+		    req.outmime["Accept-Ranges"] = "bytes";
+		    req.outmime["Content-Type"] = mime_type;
+		    req.set_contentlength (statbuf.st_size);
+		    req.set_relative_expires (60);	// JDJDJDJD this should be tuneable, with mime type ?
+		    req.publish_header();
+
+		    free (canonfname);
+		    return TRCompleted;
+		}
+
+
+
 		int f = open (canonfname, O_RDONLY);
 		if (f < 0) {
 		    int e = errno;
@@ -441,20 +513,8 @@ function sortByMTime() {
 		    return error (cout, req, 403, NULL, "file permission denied (005)");
 		}
 
-		string mime_type;
-		size_t pdot = req.document_uri.rfind('.');
-		if (pdot == string::npos) {
-		    mime_type = "text/plain";
-		} else {
-		    string terminaison = req.document_uri.substr(pdot + 1);
-		    const string * pmt = mimetypes.getmimefromterminaison (terminaison);
-		    if (pmt == NULL)
-			mime_type = "text/plain";
-		    else
-			mime_type = *pmt;
-		}
-
 		req.statuscode = 200;
+		req.outmime["Accept-Ranges"] = "bytes";
 		req.outmime["Content-Type"] = mime_type;
 		req.set_contentlength (statbuf.st_size);
 		req.set_relative_expires (60);	// JDJDJDJD this should be tuneable, with mime type ?
