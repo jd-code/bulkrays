@@ -284,6 +284,7 @@ req.errlog() << "simplefmap::output lstat(" << canonfname << ") gave error " << 
 //  Connection: Keep-Alive
 //  Proxy-Connection: Keep-Alive
 
+		    req.statuscode = 200;
 		    req.outmime["Content-Type"] = "text/html;charset=UTF-8";
 		    req.set_relative_expires (20);	    // JDJDJDJD this should be tunable ?
 		    req.publish_header();
@@ -558,6 +559,7 @@ function sortByMTime() {
 		return -1;
 	    }
 	    hostmapper["hashttpp.zz"] = mapper;
+	    hostmapper["127.0.0.1:10080"] = mapper;
 	    return 0;
 
 	  case ShutDown:
