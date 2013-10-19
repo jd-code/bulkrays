@@ -104,6 +104,10 @@ namespace bulkrays {
     string fetch_localcr (const string &s, size_t p=0);
     int read_mimes_in_string (string const &s, FieldsMap &mime, string const &lcr, size_t &p, size_t l = string::npos);
 
+    bool getrange (FieldsMap const & mime, size_t &rangestart, size_t &rangeend);
+#define BULKNPOS   ((size_t)-1)    // JDJDJDJD on devrait pouvoir trouver meilleure definition
+
+
     int populate_reqfields_from_urlencodebody (const string& body, FieldsMap &reqfields, size_t p=0);
     int populate_reqfields_from_uri (const string& uri, string &document_uri, FieldsMap &reqfields);
 

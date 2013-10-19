@@ -491,7 +491,8 @@ function sortByMTime() {
 		    return TRCompleted;
 		}
 
-
+		size_t rangestart, rangeend;
+		getrange (req.mime, rangestart, rangeend);
 
 		int f = open (canonfname, O_RDONLY);
 		if (f < 0) {
