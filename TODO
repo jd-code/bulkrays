@@ -1,5 +1,6 @@
 
 bulkrays:
+	    trouver une meilleure definition de BULKNPOS
     [test]  loguer les connections coupees, transmission partielles en 999000+HTTP_code
 	    fournir une methode/variante qui ne retoune que le header des erreurs  (en reponse a HEAD)
     [done]  en cas de mauvaise 1ere ligne http fermer intempestivement la connexion
