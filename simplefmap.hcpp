@@ -144,10 +144,23 @@ namespace simplefmap {
     class MMapBuffer : virtual public DummyBuffer {
 	private:
 	    int fd;
+	    char * mapstart;
+	    ssize_t maplength;
 	public:
-	    MMapBuffer (int fd, char * start, ssize_t length) : DummyBuffer (start, length), fd(fd) {}
+	    // regular constructor that maps the whole file and transmit the whole file
+	    MMapBuffer (int fd, char * start, ssize_t length) : DummyBuffer (start, length),
+		fd(fd),
+		mapstart (start),
+		maplength (length)
+		{}
+	    // weird constructor that maps the whole file and transmit only a part of it
+	    MMapBuffer (int fd, char * transmitstart, ssize_t transmitlength, char *mapstart, ssize_t maplength) : DummyBuffer (transmitstart, transmitlength),
+		fd(fd),
+		mapstart (mapstart),
+		maplength (maplength)
+		{}
 	    ~MMapBuffer () {
-		if (munmap (start, length) != 0) {
+		if (munmap (mapstart, maplength) != 0) {
 		    int e = errno;
 		    cerr << "~MMapBuffer : munmap failed : " << e << " " << strerror(e) << endl;
 		}
@@ -492,7 +505,29 @@ function sortByMTime() {
 		}
 
 		size_t rangestart, rangeend;
-		getrange (req.mime, rangestart, rangeend);
+
+		if (getrange (req.mime, rangestart, rangeend)) {
+		    if (rangestart == BULKNPOS) {
+			cerr << "after range computation rangestart is BULKNPOS ??? ignored" << endl;
+		    } else {
+			if (rangestart > (size_t)statbuf.st_size) { // we're asked something further than the eof
+			    req.statuscode = 206;
+			    req.outmime["Accept-Ranges"] = "bytes";
+			    req.outmime["Content-Type"] = mime_type;
+			    req.set_contentlength (0);
+			    stringstream s;
+			    s << "bytes " << statbuf.st_size << "-" << statbuf.st_size << "/" << statbuf.st_size;
+			    req.outmime["Content-Range:"] = s.str();
+			    req.set_relative_expires (60);
+			    req.publish_header();
+			    free (canonfname);
+			    return TRCompleted;
+			}
+			if ((rangeend == 0) || (rangeend == BULKNPOS)) {
+			    rangeend = statbuf.st_size - 1;
+			}
+		    }
+		}
 
 		int f = open (canonfname, O_RDONLY);
 		if (f < 0) {
@@ -515,21 +550,43 @@ function sortByMTime() {
 		    return error (cout, req, 403, NULL, "file permission denied (005)");
 		}
 
-		req.statuscode = 200;
-		req.outmime["Accept-Ranges"] = "bytes";
-		req.outmime["Content-Type"] = mime_type;
-		req.set_contentlength (statbuf.st_size);
-		req.set_relative_expires (60);	// JDJDJDJD this should be tuneable, with mime type ?
-		req.publish_header();
+		if ((rangestart != BULKNPOS) && ((rangeend-rangestart + 1) < (size_t)statbuf.st_size)) {    // we have a range shorter than the file
+		    req.statuscode = 206;
+		    req.outmime["Accept-Ranges"] = "bytes";
+		    req.outmime["Content-Type"] = mime_type;
+		    stringstream s;
+		    s << "bytes " << rangestart << "-" << rangeend << "/" << statbuf.st_size;
+		    req.outmime["Content-Range:"] = s.str();
+		    req.set_contentlength (rangeend-rangestart + 1);
+		    req.set_relative_expires (60);	// JDJDJDJD this should be tuneable, with mime type ?
+		    req.publish_header();
+
+		    MMapBuffer* mmbuf = new MMapBuffer (f, fmap+rangestart, rangeend-rangestart + 1, fmap, statbuf.st_size);
+		    if (mmbuf == NULL) {
+			req.errlog() << "could not allocate MMapBuffer" << endl;
+			munmap (fmap, statbuf.st_size);
+			close (f);
+		    }
+		    req.httppconn->pushdummybuffer (mmbuf);
+
+		} else {    // either no range or range is the whole file
+
+		    req.statuscode = 200;
+		    req.outmime["Accept-Ranges"] = "bytes";
+		    req.outmime["Content-Type"] = mime_type;
+		    req.set_contentlength (statbuf.st_size);
+		    req.set_relative_expires (60);	// JDJDJDJD this should be tuneable, with mime type ?
+		    req.publish_header();
 
 
-		MMapBuffer* mmbuf = new MMapBuffer (f, fmap, statbuf.st_size);
-		if (mmbuf == NULL) {
-		    req.errlog() << "could not allocate MMapBuffer" << endl;
-		    munmap (fmap, statbuf.st_size);
-		    close (f);
+		    MMapBuffer* mmbuf = new MMapBuffer (f, fmap, statbuf.st_size);
+		    if (mmbuf == NULL) {
+			req.errlog() << "could not allocate MMapBuffer" << endl;
+			munmap (fmap, statbuf.st_size);
+			close (f);
+		    }
+		    req.httppconn->pushdummybuffer (mmbuf);
 		}
-		req.httppconn->pushdummybuffer (mmbuf);
 
 	    }
 	    free (canonfname);
