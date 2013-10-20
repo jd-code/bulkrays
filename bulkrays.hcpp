@@ -336,18 +336,18 @@ static const char* hex="0123456789ABCDEF";
 	rangestart = BULKNPOS;
 	rangeend = BULKNPOS;
 
-	FieldsMap::const_iterator mi = req.mime.find("Range");
-	if (mi != req.mime.end()) {	// we don't have a range request ...
+	FieldsMap::const_iterator mi = mime.find("Range");
+	if (mi == mime.end()) {	// we don't have a range request ...
 	    return false;
 	}
 
-	string & range = mi->second;
-	if (string.empty()) return false;
+	const string & range = mi->second;
+	if (range.empty()) return false;
 
 // Range: bytes=0-999
 // Range: bytes=1000-
-	size_t p = range.find ('-');	// JDJDJDJD if not found, shall we return false ???
-	if (p == 0) return false;
+	size_t p = range.find ('-', 7);	// JDJDJDJD if not found, shall we return false ???
+	if (p == 7) return false;
 
 	size_t q = p;
 size_t val1 = atoi (range.substr(0,p).c_str());  // this could be better ????
@@ -358,13 +358,13 @@ size_t val1 = atoi (range.substr(0,p).c_str());  // this could be better ????
 	while (true) {
 	    if (isdigit (range[p]))
 		rangestart += (range[p]-'0') * mult;
-	    if (p == 0) break;
+	    if (p == 7) break;
 	    mult *= 10, p--;
 	}
 
 // verification
 if (val1 != rangestart) {
-    cerr << "Range calculation mismatch : [" << range << "] => " << val1 " != " << rangestart << endl;
+    cerr << "Range calculation mismatch : [" << range << "] => " << val1 << " != " << rangestart << endl;
 }
 
 	p = q+1;
@@ -381,7 +381,7 @@ if (val1 != rangestart) {
 // verification
 size_t val2 = atoi (range.substr (q+1).c_str());
 if (val2 != rangeend) {
-    cerr << "Range calculation mismatch : [" << range << "] => " << val2 " != " << rangeend << endl;
+    cerr << "Range calculation mismatch : [" << range << "] => " << val2 << " != " << rangeend << endl;
 }
 
 cerr << "got range : " << range << " => " << rangestart << " - " << rangeend << endl;
