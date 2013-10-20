@@ -497,7 +497,8 @@ function sortByMTime() {
 		    req.outmime["Accept-Ranges"] = "bytes";
 		    req.outmime["Content-Type"] = mime_type;
 		    req.set_contentlength (statbuf.st_size);
-		    req.set_relative_expires (60);	// JDJDJDJD this should be tuneable, with mime type ?
+		    req.set_relative_expires (3660);	// JDJDJDJD this should be tuneable, with mime type ?
+	    req.outmime["Keep-Alive"] = "timeout=15, max=100";
 		    req.publish_header();
 
 		    free (canonfname);
@@ -517,8 +518,9 @@ function sortByMTime() {
 			    req.set_contentlength (0);
 			    stringstream s;
 			    s << "bytes " << statbuf.st_size << "-" << statbuf.st_size << "/" << statbuf.st_size;
-			    req.outmime["Content-Range:"] = s.str();
-			    req.set_relative_expires (60);
+			    req.outmime["Content-Range"] = s.str();
+			    req.set_relative_expires (3660);
+	    req.outmime["Keep-Alive"] = "timeout=15, max=100";
 			    req.publish_header();
 			    free (canonfname);
 			    return TRCompleted;
@@ -556,9 +558,10 @@ function sortByMTime() {
 		    req.outmime["Content-Type"] = mime_type;
 		    stringstream s;
 		    s << "bytes " << rangestart << "-" << rangeend << "/" << statbuf.st_size;
-		    req.outmime["Content-Range:"] = s.str();
+		    req.outmime["Content-Range"] = s.str();
 		    req.set_contentlength (rangeend-rangestart + 1);
-		    req.set_relative_expires (60);	// JDJDJDJD this should be tuneable, with mime type ?
+		    req.set_relative_expires (3660);	// JDJDJDJD this should be tuneable, with mime type ?
+	    req.outmime["Keep-Alive"] = "timeout=15, max=100";
 		    req.publish_header();
 
 		    MMapBuffer* mmbuf = new MMapBuffer (f, fmap+rangestart, rangeend-rangestart + 1, fmap, statbuf.st_size);
@@ -575,7 +578,8 @@ function sortByMTime() {
 		    req.outmime["Accept-Ranges"] = "bytes";
 		    req.outmime["Content-Type"] = mime_type;
 		    req.set_contentlength (statbuf.st_size);
-		    req.set_relative_expires (60);	// JDJDJDJD this should be tuneable, with mime type ?
+		    req.set_relative_expires (3660);	// JDJDJDJD this should be tuneable, with mime type ?
+	    req.outmime["Keep-Alive"] = "timeout=15, max=100";
 		    req.publish_header();
 
 
@@ -610,7 +614,7 @@ function sortByMTime() {
     int simplefmap_global (BSOperation op) {
 	switch (op) {
 	  case StartUp:
-	    mapper = new fmap_urimapper("/home/");
+	    mapper = new fmap_urimapper("/home/bulkrayed");
 //	    mapper = new fmap_urimapper("/BIG/home/webs/hashttpp.zz/html");
 	    if (mapper == NULL) {
 		cerr << "bulkrays::testsite_global could not allocate fmap_urimapper" << endl;
