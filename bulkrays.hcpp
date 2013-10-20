@@ -346,8 +346,8 @@ static const char* hex="0123456789ABCDEF";
 
 // Range: bytes=0-999
 // Range: bytes=1000-
-	size_t p = range.find ('-', 7);	// JDJDJDJD if not found, shall we return false ???
-	if (p == 7) return false;
+	size_t p = range.find ('-', 6);	// JDJDJDJD if not found, shall we return false ???
+	if (p == 6) return false;
 
 	size_t q = p;
 size_t val1 = atoi (range.substr(0,p).c_str());  // this could be better ????
@@ -358,7 +358,7 @@ size_t val1 = atoi (range.substr(0,p).c_str());  // this could be better ????
 	while (true) {
 	    if (isdigit (range[p]))
 		rangestart += (range[p]-'0') * mult;
-	    if (p == 7) break;
+	    if (p == 6) break;
 	    mult *= 10, p--;
 	}
 
