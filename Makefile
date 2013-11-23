@@ -36,7 +36,7 @@ bulkrays.o: bulkrays.cc include/bulkrays/bulkrays.h qiconn/include/qiconn/qiconn
 
 
 qiconn/qiconn.o: qiconn/qiconn.cpp qiconn/include/qiconn/qiconn.h
-	( cd qiconn ; make qiconn.o )
+	( export MAKEDEBUG=${DEBUG} ; cd qiconn ; make qiconn.o )
 
 
 include/bulkrays/bulkrays.h: qiconn/include/qiconn/qiconn.h
@@ -45,7 +45,7 @@ clean:
 	rm -f *.cc
 	rm -f *.o bulkrays hcpp2cpp
 	rm -rf bulkrays-doc
-	( cd qiconn ; make clean )
+	( export MAKEDEBUG=${DEBUG} ; cd qiconn ; make clean )
 
 distclean: clean
 
