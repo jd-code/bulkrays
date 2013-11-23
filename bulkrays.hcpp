@@ -2162,12 +2162,15 @@ using namespace std;
 using namespace qiconn;
 using namespace bulkrays;
 
+typedef pair<string,int> AddressPort;
+
 int main (int nb, char ** cmde) {
 
     string user ("www-data");
     string group;
-    string address ("0.0.0.0");
-    int port = 80;
+    list<AddressPort> addresses;
+    list<int> listsockets;
+
     string flogname("/var/log/bulkrays/access_log");	// JDJDJDJD we should introduce a DEFINEd scheme for such defaults
     bool activatettyconsole = false;
 
@@ -2192,11 +2195,12 @@ int main (int nb, char ** cmde) {
 	    string scheme(cmde[i]+7);
 	    size_t p = scheme.find(':');
 	    if (p == string::npos) {	// we have only an addr ?
-		address = scheme;
+		addresses.push_back(AddressPort(scheme,80));
 	    } else {
-		port = atoi (scheme.substr(p+1).c_str());
 		if (p>0)
-		    address = scheme.substr(0,p);
+		    addresses.push_back(AddressPort(scheme.substr(0,p), atoi (scheme.substr(p+1).c_str())));
+		else
+		    addresses.push_back(AddressPort("0.0.0.0", atoi (scheme.substr(p+1).c_str())));
 	    }
 	    // cerr << "will try to bind : " << address << ":" << port << endl;
 	} else if (strncmp (cmde[i], "--earlylog", 10) == 0) {
@@ -2243,11 +2247,27 @@ int main (int nb, char ** cmde) {
       }
     }
 
+    if (addresses.empty())
+	addresses.push_back(AddressPort("0.0.0.0",80));
 
-    int s = server_pool (port, address.c_str());
-    if (s < 0) {
-	cerr << "could not instanciate connection pool, bailing out !" << endl;
-	return -1;
+    // we bind before dropping privileges
+    {	list<AddressPort>::iterator li;
+	for (li=addresses.begin() ; li!=addresses.end() ; li++) {
+	    int port = li->second;
+	    string &address = li->first;
+
+    cerr << "binding [" << address << "]:[" << port << "]" << endl;
+
+	    int s = server_pool (port, address.c_str());
+	    if (s < 0) {
+		cerr << "could not instanciate listening socket, bailing out !" << endl;
+		for (list<int>::iterator li=listsockets.begin() ; li!=listsockets.end() ; li++)
+		    ::close (*li);
+		return -1;
+	    }
+
+	    listsockets.push_back(s);
+	}
     }
 
     {	struct passwd *pwent = getpwnam (user.c_str());
@@ -2289,12 +2309,6 @@ cerr << cmde[0] << " started, pid=" << getpid() << endl;
     }
 
 
-    HttppBinder *ls = new HttppBinder (s, port, address.c_str());
-    if (ls == NULL) {
-	cerr << "could not instanciate HttppBinder, bailing out !" << endl;
-	return -1;
-    }
-
     ofstream cflog (flogname.c_str(), ios::app);
     if (!cflog) {
 	int e = errno;
@@ -2307,8 +2321,26 @@ cerr << cmde[0] << " started, pid=" << getpid() << endl;
     bulkrayscpool.init_signal ();
     bulkrayscpool.add_signal_handler (SIGQUIT);
     bulkrayscpool.add_signal_handler (SIGINT);
-    
-    bulkrayscpool.push (ls);
+
+    {	list<AddressPort>::iterator li;
+	list<int>::iterator lj;
+	for (li=addresses.begin(),lj=listsockets.begin() ; (li!=addresses.end()) && (lj!=listsockets.end()) ; li++,lj++) {
+	    int port = li->second;
+	    string &address = li->first;
+
+	    HttppBinder *ls = new HttppBinder (*lj, port, address.c_str());
+	    if (ls == NULL) {
+		cerr << "could not instanciate HttppBinder, bailing out !" << endl;
+		for (list<int>::iterator li=listsockets.begin() ; li!=listsockets.end() ; li++)
+		    ::close (*li);
+		return -1;
+	    }
+
+	    bulkrayscpool.push (ls);
+
+	}
+    }
+
 
     SillyConsoleOut *psillyconsolestdout = NULL;
     SillyConsoleIn *psillyconsolestdin = NULL;
@@ -2395,7 +2427,8 @@ if (bulkrays::properties["BulkRays::ownsetoftests"]) {
 
     bulkrayscpool.closeall ();
 
-    close (s);
+    for (list<int>::iterator li=listsockets.begin() ; li!=listsockets.end() ; li++)
+		::close (*li);
 
     bootstrap_global (bulkrays::ShutDown);
 
