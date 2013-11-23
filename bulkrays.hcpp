@@ -1444,14 +1444,17 @@ if (debugparsereq) {
 	    request.statuscode += 999000;	    // JDJDJDJD don't really know what to do here 
 	    request.logger();
 	    request.clear ();
+state = BuggyConn;
 	}
 	SocketConnection::reconnect_hook(); // this one schedules for destruction ...
     }
 
     void HttppConn::eow_hook (void) {
 // for now we also log BuggyConn here :
-if ((state != WaitingEOW) && (state != HTTPRequestLine))
+if ((state != WaitingEOW) && (state != HTTPRequestLine)) {
 errlog() << "HttppConn::eow_hook called while not in WaitingEOW or HTTPRequestLine !!  state = " << (int) state << endl;
+state = BuggyConn;
+}
 
 	// BuggyConn aren't logged twice here ...
 	if (state == WaitingEOW) {	// JDJDJDJD logging should go here !!!
