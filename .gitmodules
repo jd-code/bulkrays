@@ -1,3 +1,3 @@
 [submodule "qiconn"]
 	path = qiconn
-	url = gitty@repoz.nekodune.net:qiconn.git
+	url = https://github.com/jd-code/qiconn.git
