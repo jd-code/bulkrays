@@ -7,7 +7,7 @@ A minimalist example is provided through the [simplefmap.hcpp](https://github.co
 content.
 
 # Dependencies #
-[qiconn](https://github.com/jd-code/qiconn) is imported as a git submodule
+* [qiconn](https://github.com/jd-code/qiconn) is imported as a git submodule
 
 # Usage #
 there's yet no typical service script for maintaining the daemon operations.
@@ -15,6 +15,7 @@ such a command line will launch the server binding on two addresses, dropping ro
 credentials for a less dangerously empowered user "bulkrays" right after binding ports
 for example :
 ```
-./bulkrays --bind=134.214.100.25:80 --bind=134.214.100.245:80 --user=bulkrays 2>&1 >> /var/log/bulkrays/error.log & 
+./bulkrays --bind=134.214.100.25:80 --bind=134.214.100.245:80 --user=bulkrays 2>&1 \
+    >> /var/log/bulkrays/error.log & 
 ```
 
