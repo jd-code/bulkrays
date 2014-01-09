@@ -13,8 +13,8 @@ A [vim syntax extension](https://github.com/jd-code/bulkrays/blob/master/hcpp.vi
 
 # Usage #
 there's yet no typical service script for maintaining the daemon operations.
-such a command line will launch the server binding on two addresses, dropping root
-credentials for a less dangerously empowered user "bulkrays" right after binding ports
+such a command line will launch the server binding on two addresses, *dropping root
+credentials* for a less dangerously empowered user "bulkrays" right after binding ports
 for example :
 ```
 ./bulkrays --bind=134.214.100.25:80 --bind=134.214.100.245:80 --user=bulkrays 2>&1 \
@@ -29,5 +29,5 @@ git submodule update
 make
 ```
 A real interesting build should contain additionnal cpp modules of yours, inspired by
-simplefmap.hcpp, and duly referenced in bootstrap.cpp.
+`simplefmap.hcpp`, and duly referenced in `bootstrap.cpp`.
 
