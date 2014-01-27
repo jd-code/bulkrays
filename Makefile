@@ -20,6 +20,7 @@ vimtest: all
 	# exit 0
 	# ./hcpp2cpp testbb.hcpp -o testbb.cpp
 	./bulkrays --bind=127.0.0.1:10080 --user=$$USER		\
+	    --debugschedest --debugconstructor			\
 	    --access_log=access_log --earlylog --console	\
 	    --p tagazou zonzon=2 p=3				\
 	    BulkRays::ownsetoftests				\

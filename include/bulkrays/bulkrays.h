@@ -367,6 +367,8 @@ static ostream * clog;
     class HttppConn : public SocketConnection
     {
 	public:
+
+static bool debugconstructor;
 static int idnum;
 
 	    typedef enum {
@@ -408,7 +410,9 @@ static int idnum;
 
 	    void finishtreatment (void);
     };
+    ostream& operator<< (ostream& out, HttppConn::State const& state);
 #ifdef BULKRAYS_H_GLOBINST
+bool HttppConn::debugconstructor = false;
 int HttppConn::idnum = 0;
     BULKRAYS_H_SCOPE ofstream cnull("/dev/null");
     BULKRAYS_H_SCOPE HttppConn httpconnnull (-1, sockaddr_in());
