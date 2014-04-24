@@ -82,7 +82,16 @@ bool parse (istream &in, ostream &out) {
     return true;
 }
 
+void usage (void) {
+    cout << "usage : hcpp2cpp [ ... input.hcpp ... ] -o[ ]output.cc" << endl << endl;
+}
+
 int main (int nb, char ** cmde) {
+
+    if (nb == 1) {
+	usage();
+	return 1;
+    }
 
     string outputfname;
 
@@ -100,6 +109,7 @@ int main (int nb, char ** cmde) {
 
     if (outputfname.empty()) {
 	cerr << "hcpp2cpp  error, missing filename output" << endl;
+	usage();
 	return 1;
     }
 

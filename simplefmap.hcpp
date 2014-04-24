@@ -1,3 +1,5 @@
+#include "config.h"
+
 #include <sys/types.h>	    // stat opendir
 #include <sys/stat.h>	    // stat
 #include <unistd.h>	    // stat
@@ -614,7 +616,11 @@ function sortByMTime() {
     int simplefmap_global (BSOperation op) {
 	switch (op) {
 	  case StartUp:
+#ifdef OSXFILESCHEME
+	    mapper = new fmap_urimapper("/Users/bulkrayed");
+#else
 	    mapper = new fmap_urimapper("/home/bulkrayed");
+#endif
 //	    mapper = new fmap_urimapper("/BIG/home/webs/hashttpp.zz/html");
 	    if (mapper == NULL) {
 		cerr << "bulkrays::testsite_global could not allocate fmap_urimapper" << endl;

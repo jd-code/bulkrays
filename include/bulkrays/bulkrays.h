@@ -279,7 +279,11 @@ static ostream * clog;
 			     "ionVyikI+yk7Kzoxa4eKC6t796rqu8rbKtxmQ2oMmOqqcsyc2fH8lezMBiqpjIYdK7370uz9C31r"
 			     "Nn1iW0d+GtlblM7VHt3HHmg+X1htP3O9z3rur9aZgEMAiigAADs=");
 
+#ifndef OSXFILESCHEME
     BULKRAYS_H_SCOPE MimeTypes mimetypes("/etc/mime.types");
+#else
+    BULKRAYS_H_SCOPE MimeTypes mimetypes("/etc/apache2/mime.types");
+#endif
 #else
     BULKRAYS_H_SCOPE const string xhtml_header;
     BULKRAYS_H_SCOPE const string bomb64_gif;

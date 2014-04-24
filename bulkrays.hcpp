@@ -1,3 +1,6 @@
+
+#include "config.h"
+
 #include <fstream>
 #include <iomanip>
 #include <stdlib.h>
@@ -15,7 +18,9 @@
 
 #include <unistd.h>
 #include <fcntl.h>
-#include <sys/prctl.h>
+#ifdef HAVE_PR_SET_DUMPABLE
+#include <sys/prctl.h>	// linux for toggling core dumps
+#endif
 
 #define QICONN_H_GLOBINST
 #define BULKRAYS_H_GLOBINST
@@ -1492,6 +1497,7 @@ state = BuggyConn;
 	BufConnection::eow_hook();	// JDJDJDJD not very good, should be called internally
     }
 
+    // JDJDJDJD default value of clog ???? (to be confirmed)
     ostream * HTTPRequest::clog = &cerr;
 
     
@@ -2330,6 +2336,7 @@ int main (int nb, char ** cmde) {
 	    return -1;
 	}
 
+#ifdef HAVE_PR_SET_DUMPABLE
 cerr << "prctl (PR_GET_DUMPABLE) = " << prctl (PR_GET_DUMPABLE) << endl;
 	if (prctl (PR_SET_DUMPABLE, 1) != 0) {
 	    int e = errno;
@@ -2337,6 +2344,7 @@ cerr << "prctl (PR_GET_DUMPABLE) = " << prctl (PR_GET_DUMPABLE) << endl;
 	    return -1;
 	}
 cerr << "prctl (PR_GET_DUMPABLE) = " << prctl (PR_GET_DUMPABLE) << endl;
+#endif
 cerr << cmde[0] << " started, pid=" << getpid() << endl;
     }
 
