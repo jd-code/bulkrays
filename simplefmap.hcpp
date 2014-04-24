@@ -616,7 +616,7 @@ function sortByMTime() {
     int simplefmap_global (BSOperation op) {
 	switch (op) {
 	  case StartUp:
-#ifdef OSXFILESCHEME
+#if OSXFILESCHEME == 1
 	    mapper = new fmap_urimapper("/Users/bulkrayed");
 #else
 	    mapper = new fmap_urimapper("/home/bulkrayed");

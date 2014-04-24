@@ -17,7 +17,7 @@ bin_PROGRAMS = hcpp2cpp bulkrays
 hcpp2cpp_SOURCES = hcpp2cpp.cpp
 
 bulkrays_SOURCES = testsite.cpp bootstrap.cpp simplefmap.cc bulkrays.cc
-bulkrays_LDADD = @QICONNSOURCE@/qiconn.o
+bulkrays_LDADD = @QICONNSOURCE@/libqiconn.a
 
 		   
 %.cc: %.hcpp hcpp2cpp
@@ -26,7 +26,7 @@ bulkrays_LDADD = @QICONNSOURCE@/qiconn.o
 doc: include/bulkrays/*.h *.cpp bulkrays.dox
 	doxygen bulkrays.dox
 
-CLEANFILES = bulkrays.cc simplefmap.cc
+CLEANFILES = bulkrays.cc simplefmap.cc access_log
 
 clean-local:
 	rm -rf bulkrays-doc
@@ -35,6 +35,6 @@ distclean-local:
 	rm m4/*.m4
 
 
-@QICONNSOURCE@/qiconn.o:
-	cd @QICONNSOURCE@ && make qiconn.o
+@QICONNSOURCE@/libqiconn.a:
+	cd @QICONNSOURCE@ && make libqiconn.a
 
