@@ -29,12 +29,19 @@ doc: include/bulkrays/*.h *.cpp bulkrays.dox
 CLEANFILES = bulkrays.cc simplefmap.cc access_log
 
 clean-local:
+	cd @QICONNSOURCE@ && make clean
 	rm -rf bulkrays-doc
 
 distclean-local:
+	cd @QICONNSOURCE@ && make distclean
 	rm m4/*.m4
 
+@QICONNSOURCE@/configure:
+	cd @QICONNSOURCE@ && autoall
 
-@QICONNSOURCE@/libqiconn.a:
+@QICONNSOURCE@/Makefile: @QICONNSOURCE@/configure
+	cd @QICONNSOURCE@ && ./configure -prefix=$(prefix)
+
+@QICONNSOURCE@/libqiconn.a: @QICONNSOURCE@/qiconn.cpp @QICONNSOURCE@/include/qiconn/qiconn.h @QICONNSOURCE@/Makefile
 	cd @QICONNSOURCE@ && make libqiconn.a
 
