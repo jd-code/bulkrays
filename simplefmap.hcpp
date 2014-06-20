@@ -335,6 +335,7 @@ req.errlog() << "simplefmap::output opendir(" << canonfname << " ) gave error " 
 		    req.errlog() << "simplefmap::output could not alloc struct dirent * (size = " << (int)dirent_len << ")" << endl;
 		    req.set_relative_expires (60);
 		    free (canonfname);
+		    closedir (fdir);
 		    return error (cout, req, 503, NULL, "weidries occured (002)");
 		}
 
@@ -473,6 +474,7 @@ function sortByMTime() {
 		req.set_relative_expires (20);	    // JDJDJDJD this should be tunable ?
 		req.publish_header();
 		cout << s.str();
+		closedir (fdir);
 	    } else { // we found a file
 		string mime_type;
 		size_t pdot = req.document_uri.rfind('.');
