@@ -2051,91 +2051,91 @@ cerr << beginparsebody << ostreamMap(response.mime,           BEGIN_TERM_IDENT "
     }
 
 
-// ---------------------- TO BE REMOVED ------------------------
-// ---------------------- TO BE REMOVED ------------------------
-
-class SillyHttpGet : public ASyncCallBack {
-	HTTPClient *hc;
-	string theurl;
-	HTTPResponse response;
-    public:
-	SillyHttpGet (string url) :
-	    theurl(url)
-	{
-	    hc = new HTTPClient ();
-	    if (hc == NULL) {
-cerr << "complain !" << endl;
-		return;
-	    }
-	    hc->register_into_pool (&bulkrayscpool);
-
-	    response.clear();
-	    hc->http_get (url, response, this, 42);
-cerr << theurl << endl;
-	}
-	virtual int callback (FaitLaForce v) {
-	    if (v.i == 42) {
-		if (hc == NULL) return -1;
-		cerr << "--------------------" << endl
-		     << theurl << endl
-		     << "--------------------" << endl
-		     << response.req_body << "<--------" << endl
-		     << "--------------------" << endl;
-		hc->deregister_from_pool();
-cerr << "about to delete hc" << endl;
-///////////////		delete hc;
-		hc = NULL;
-	    }
-	    return 0;
-	}
-	virtual ~SillyHttpGet (void) {
-cerr << "destruction" << endl;
-	}
-};
-
-
-class SillyHttpPut : public ASyncCallBack {
-	HTTPClient *hc;
-	string theurl;
-	HTTPResponse response;
-    public:
-	SillyHttpPut (string url, FieldsMap &vals) :
-	    theurl(url)
-	{
-	    hc = new HTTPClient ();
-	    if (hc == NULL) {
-cerr << "complain !" << endl;
-		return;
-	    }
-	    hc->register_into_pool (&bulkrayscpool);
-
-	    response.clear();
-	    hc->http_post_urlencoded (url, vals, response, this, 42);
-cerr << theurl << endl;
-	}
-	virtual int callback (FaitLaForce v) {
-	    if (v.i == 42) {
-		if (hc == NULL) return -1;
-		cerr << "--------------------" << endl
-		     << theurl << endl
-		     << "--------------------" << endl
-		     << response.req_body << "<--------" << endl
-		     << "--------------------" << endl;
-		hc->deregister_from_pool();
-cerr << "about to delete hc (2)" << endl;
-///////////////		delete hc;
-		hc = NULL;
-	    }
-	    return 0;
-	}
-	virtual ~SillyHttpPut (void) {
-cerr << "destruction" << endl;
-	}
-};
-
-
-// ---------------------- TO BE REMOVED ------------------------
-// ---------------------- TO BE REMOVED ------------------------
+//	// ---------------------- TO BE REMOVED ------------------------
+//	// ---------------------- TO BE REMOVED ------------------------
+//	
+//	class SillyHttpGet : public ASyncCallBack {
+//		HTTPClient *hc;
+//		string theurl;
+//		HTTPResponse response;
+//	    public:
+//		SillyHttpGet (string url) :
+//		    theurl(url)
+//		{
+//		    hc = new HTTPClient ();
+//		    if (hc == NULL) {
+//	cerr << "complain !" << endl;
+//			return;
+//		    }
+//		    hc->register_into_pool (&bulkrayscpool);
+//	
+//		    response.clear();
+//		    hc->http_get (url, response, this, 42);
+//	cerr << theurl << endl;
+//		}
+//		virtual int callback (FaitLaForce v) {
+//		    if (v.i == 42) {
+//			if (hc == NULL) return -1;
+//			cerr << "--------------------" << endl
+//			     << theurl << endl
+//			     << "--------------------" << endl
+//			     << response.req_body << "<--------" << endl
+//			     << "--------------------" << endl;
+//			hc->deregister_from_pool();
+//	cerr << "about to delete hc" << endl;
+//	///////////////		delete hc;
+//			hc = NULL;
+//		    }
+//		    return 0;
+//		}
+//		virtual ~SillyHttpGet (void) {
+//	cerr << "destruction" << endl;
+//		}
+//	};
+//	
+//	
+//	class SillyHttpPut : public ASyncCallBack {
+//		HTTPClient *hc;
+//		string theurl;
+//		HTTPResponse response;
+//	    public:
+//		SillyHttpPut (string url, FieldsMap &vals) :
+//		    theurl(url)
+//		{
+//		    hc = new HTTPClient ();
+//		    if (hc == NULL) {
+//	cerr << "complain !" << endl;
+//			return;
+//		    }
+//		    hc->register_into_pool (&bulkrayscpool);
+//	
+//		    response.clear();
+//		    hc->http_post_urlencoded (url, vals, response, this, 42);
+//	cerr << theurl << endl;
+//		}
+//		virtual int callback (FaitLaForce v) {
+//		    if (v.i == 42) {
+//			if (hc == NULL) return -1;
+//			cerr << "--------------------" << endl
+//			     << theurl << endl
+//			     << "--------------------" << endl
+//			     << response.req_body << "<--------" << endl
+//			     << "--------------------" << endl;
+//			hc->deregister_from_pool();
+//	cerr << "about to delete hc (2)" << endl;
+//	///////////////		delete hc;
+//			hc = NULL;
+//		    }
+//		    return 0;
+//		}
+//		virtual ~SillyHttpPut (void) {
+//	cerr << "destruction" << endl;
+//		}
+//	};
+//	
+//	
+//	// ---------------------- TO BE REMOVED ------------------------
+//	// ---------------------- TO BE REMOVED ------------------------
 
 
 
@@ -2187,20 +2187,16 @@ cerr << "destruction" << endl;
 
 
 
-} // namespace bulkrays
-
-using namespace std;
-using namespace qiconn;
-using namespace bulkrays;
-
 typedef pair<string,int> AddressPort;
 
-int main (int nb, char ** cmde) {
-
+BulkRaysCPool::BulkRaysCPool (int nb, char ** cmde) : ConnectionPool (),
+    status (false),
+    psillyconsolestdout (NULL),
+    psillyconsolestdin (NULL)
+{
     string user ("www-data");
     string group;
     list<AddressPort> addresses;
-    list<int> listsockets;
 
     string flogname("/var/log/bulkrays/access_log");	// JDJDJDJD we should introduce a DEFINEd scheme for such defaults
     bool activatettyconsole = false;
@@ -2224,7 +2220,6 @@ int main (int nb, char ** cmde) {
 			    << "      [--debugparsebody]         \\" << endl
 			    << "      [--console]                \\" << endl
 			    << "      [--properties|-p] [prop[=true]] [prop=value] ";
-	    return 0;
 	} else if (strncmp (cmde[i], "--bind=", 7) == 0) {
 	    string scheme(cmde[i]+7);
 	    size_t p = scheme.find(':');
@@ -2301,7 +2296,7 @@ int main (int nb, char ** cmde) {
 		cerr << "could not instanciate listening socket, bailing out !" << endl;
 		for (list<int>::iterator li=listsockets.begin() ; li!=listsockets.end() ; li++)
 		    ::close (*li);
-		return -1;
+		return;
 	    }
 
 	    listsockets.push_back(s);
@@ -2311,7 +2306,7 @@ int main (int nb, char ** cmde) {
     {	struct passwd *pwent = getpwnam (user.c_str());
 	if (pwent == NULL) {
 	    cerr << "could not retrieve uid for user=" << user << endl;
-	    return -1;
+	    return;
 	}
 	uid_t uid = pwent->pw_uid;
 	gid_t gid = pwent->pw_gid;
@@ -2320,7 +2315,7 @@ int main (int nb, char ** cmde) {
 	    struct group * grent = getgrnam (group.c_str());
 	    if (grent == NULL) {
 		cerr << "could not retrieve gid for group=" << group << endl;
-		return -1;
+		return;
 	    }
 	    gid = grent->gr_gid;
 	}
@@ -2328,12 +2323,12 @@ int main (int nb, char ** cmde) {
 	if (setgid (gid) != 0) {
 	    int e = errno;
 	    cerr << "could not change gid privileges ? " << strerror(e) << endl;
-	    return -1;
+	    return;
 	}
 	if (setuid (uid) != 0) {
 	    int e = errno;
 	    cerr << "could not change uid privileges ? " << strerror(e) << endl;
-	    return -1;
+	    return;
 	}
 
 #ifdef HAVE_PR_SET_DUMPABLE
@@ -2349,18 +2344,19 @@ cerr << cmde[0] << " started, pid=" << getpid() << endl;
     }
 
 
-    ofstream cflog (flogname.c_str(), ios::app);
-    if (!cflog) {
+    ofstream *pcflog = new ofstream(flogname.c_str(), ios::app);
+    if ((pcflog == NULL) || (!*pcflog)) {
 	int e = errno;
 	cerr << "could not open " << flogname << " : " << strerror(e) << endl;
-	return -1;
+	return;
     }
-    HTTPRequest::clog = &cflog;
+    HTTPRequest::clog = pcflog;
 
-    bulkrayscpool.set_debug_multiple_scheddestr (debug_multiple_scheddestr);
-    bulkrayscpool.init_signal ();
-    bulkrayscpool.add_signal_handler (SIGQUIT);
-    bulkrayscpool.add_signal_handler (SIGINT);
+    set_debug_multiple_scheddestr (debug_multiple_scheddestr);
+
+    init_signal ();
+    add_signal_handler (SIGQUIT);
+    add_signal_handler (SIGINT);
 
     {	list<AddressPort>::iterator li;
 	list<int>::iterator lj;
@@ -2373,17 +2369,14 @@ cerr << cmde[0] << " started, pid=" << getpid() << endl;
 		cerr << "could not instanciate HttppBinder, bailing out !" << endl;
 		for (list<int>::iterator li=listsockets.begin() ; li!=listsockets.end() ; li++)
 		    ::close (*li);
-		return -1;
+		return;
 	    }
 
-	    bulkrayscpool.push (ls);
+	    push (ls);
 
 	}
     }
 
-
-    SillyConsoleOut *psillyconsolestdout = NULL;
-    SillyConsoleIn *psillyconsolestdin = NULL;
     if (activatettyconsole) {
 	{   int flags;	// JDJDJDJD this part could be avoided if Connection object could be marked "not for reading" in ConnectionPool
 	    if ((flags = fcntl (1, F_GETFL, 0)) < 0) {
@@ -2398,61 +2391,28 @@ cerr << cmde[0] << " started, pid=" << getpid() << endl;
 	if ((psillyconsolestdout = new SillyConsoleOut (1)) == NULL) {
 	    cerr << "could not allocate SillyConsoleOut" << endl;
 	} else {
-	    psillyconsolestdout->register_into_pool (&bulkrayscpool, false);
+	    psillyconsolestdout->register_into_pool (this, false);
 	}
-	if ((psillyconsolestdin = new SillyConsoleIn (0, psillyconsolestdout, &bulkrayscpool)) == NULL) {
+	if ((psillyconsolestdin = new SillyConsoleIn (0, psillyconsolestdout, this)) == NULL) {
 	    cerr << "could not allocate SillyConsoleIn" << endl;
 	} else {
-	    bulkrayscpool.push (psillyconsolestdin);
+	    push (psillyconsolestdin);
 	}
     }
-    
-    struct timeval timeout;
-    timeout.tv_sec = 0;
-    timeout.tv_usec = 1000;
 
+    
     status_message_globalinit ();
     bootstrap_global (bulkrays::StartUp);
-
-// HTTPClient hc;
-
-//    hc.httpget ("http://www.univ-lyon1.fr");
-//    hc.httpget ("http://www.univ-lyon1.fr/");
-//    hc.httpget ("http://www.univ-lyon1.fr/blabla");
-//    hc.httpget ("http://jd:test@www.univ-lyon1.fr/blabla");
-//    hc.httpget ("http://jd:@www.univ-lyon1.fr/blabla");
-//    hc.httpget ("http://jd@www.univ-lyon1.fr/blabla");
-//    hc.httpget ("http://www.univ-lyon1.fr:82/blabla");
-//    hc.httpget ("http://jd@www.univ-lyon1.fr:82/blabla");
-//    hc.httpget ("http://jd:test@www.univ-lyon1.fr:82/blabla");
-//
-//    hc.httpget ("www.univ-lyon1.fr");
-//    hc.httpget ("www.univ-lyon1.fr/");
-//    hc.httpget ("www.univ-lyon1.fr/blabla");
-//    hc.httpget ("jd:test@www.univ-lyon1.fr/blabla");
-//    hc.httpget ("jd:@www.univ-lyon1.fr/blabla");
-//    hc.httpget ("jd@www.univ-lyon1.fr/blabla");
-//    hc.httpget ("www.univ-lyon1.fr:82/blabla");
-//    hc.httpget ("jd@www.univ-lyon1.fr:82/blabla");
-//    hc.httpget ("jd:test@www.univ-lyon1.fr:82/blabla");
-
-
-////    hc.httpget ("http://bulkrays2.nkdn.fr/fiches/TODO");
-////    hc.register_into_pool (&bulkrayscpool);
-
-
-// JDJDJDJD this should go away someday !
-if (bulkrays::properties["BulkRays::ownsetoftests"]) {
-    new SillyHttpGet("http://bulkrays2.nkdn.fr/fiches/TODO");
-    FieldsMap vals;
-    vals ["login"]    = "jd";
-    vals ["srvfam"]   = "*";
-    vals ["passhash"] = "yopYOP";
-    new SillyHttpPut ("http://127.0.0.1:10082/check", vals);
+    status = true;
 }
 
-    bulkrayscpool.select_loop (timeout);
 
+//////    struct timeval timeout;
+//////    timeout.tv_sec = 0;
+//////    timeout.tv_usec = 1000;
+//////    bulkrayscpool.select_loop (timeout);
+
+BulkRaysCPool::~BulkRaysCPool () {
 
     if (psillyconsolestdin != NULL) {
 	psillyconsolestdin->deregister_from_pool();	// so that some other stuff can still be done on stdin/out
@@ -2465,14 +2425,36 @@ if (bulkrays::properties["BulkRays::ownsetoftests"]) {
 
     cerr << "terminating" << endl;
 
-    bulkrayscpool.closeall ();
+    closeall ();
 
     for (list<int>::iterator li=listsockets.begin() ; li!=listsockets.end() ; li++)
 		::close (*li);
 
     bootstrap_global (bulkrays::ShutDown);
-
-    return 0;
+    delete (HTTPRequest::clog);
 }
 
+} // namespace bulkrays
 
+using namespace std;
+using namespace qiconn;
+using namespace bulkrays;
+
+int main (int nb, char ** cmde) {
+    BulkRaysCPool *cp = new BulkRaysCPool (nb, cmde);
+    if (cp == NULL) {
+	cerr << "could not create BulkRaysCPool ... ?" << endl;
+	return -1;
+    }
+    if (!*cp) {
+	cerr << "BulkRaysCPool isn't fully operationnal." << endl;
+	return -1;
+    }
+    struct timeval timeout;
+    timeout.tv_sec = 0;
+    timeout.tv_usec = 1000;
+    cp->select_loop (timeout);
+
+    delete (cp);    
+    return 0;
+}

@@ -206,16 +206,31 @@ static ostream * clog;
 	return op.dump (out);
     }
 
+    class SillyConsoleOut;
+    class SillyConsoleIn;
+
     class BulkRaysCPool : public ConnectionPool {
+	private:
+	    bool status;
+	    SillyConsoleOut *psillyconsolestdout;
+	    SillyConsoleIn *psillyconsolestdin;
+	    list<int> listsockets;
 	protected:
 	    virtual void treat_signal (void);
 	public:
-	    BulkRaysCPool (void) : ConnectionPool () {}
-	    virtual ~BulkRaysCPool () {}
+	    BulkRaysCPool (int nb, char ** argv);
+	    virtual ~BulkRaysCPool ();
 	    virtual int select_poll (struct timeval *timeout) {
 		return ConnectionPool::select_poll (timeout);
 	    }
 	    void askforexit (const char * reason);
+	    operator const void * () const {
+		return status ? this : NULL;
+	    }
+
+	    bool operator ! () const {
+		return status ? false : true;
+	    }
     };
 
     void sillyconsolelineread (BufConnection &bcin, BufConnection &bcout, BulkRaysCPool *bcp);
@@ -264,7 +279,12 @@ static ostream * clog;
     };
 
 
-    BULKRAYS_H_SCOPE BulkRaysCPool bulkrayscpool;
+    //BULKRAYS_H_SCOPE BulkRaysCPool bulkrayscpool(0, NULL);
+#ifdef BULKRAYS_H_GLOBINST
+    BULKRAYS_H_SCOPE BulkRaysCPool * pbulkrayscpool = NULL;
+#else
+    BULKRAYS_H_SCOPE BulkRaysCPool * pbulkrayscpool;
+#endif
 
 #ifdef BULKRAYS_H_GLOBINST
     BULKRAYS_H_SCOPE
