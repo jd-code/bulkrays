@@ -823,6 +823,7 @@ static FieldsMap emptyvals;
 
     };
 
+    int main (int nb, char ** cmde);
 }
 
 #endif // INCL_BULKRAYS_H

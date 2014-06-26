@@ -21,3 +21,7 @@ namespace bulkrays {
     }
 
 } // namespace bulkrays
+
+int main (int nb, char ** cmde) {
+    return bulkrays::main(nb, cmde);
+}

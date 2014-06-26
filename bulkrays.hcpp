@@ -2434,12 +2434,6 @@ BulkRaysCPool::~BulkRaysCPool () {
     delete (HTTPRequest::clog);
 }
 
-} // namespace bulkrays
-
-using namespace std;
-using namespace qiconn;
-using namespace bulkrays;
-
 int main (int nb, char ** cmde) {
     BulkRaysCPool *cp = new BulkRaysCPool (nb, cmde);
     if (cp == NULL) {
@@ -2458,3 +2452,6 @@ int main (int nb, char ** cmde) {
     delete (cp);    
     return 0;
 }
+
+} // namespace bulkrays
+
