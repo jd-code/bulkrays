@@ -12,13 +12,30 @@ vimtest: all
 	    BulkRays::ownsetoftests				\
 	    2>&1 | unbuffer -p tr ':' '='
 
-bin_PROGRAMS = hcpp2cpp bulkrays
+pkginclude_HEADERS = include/bulkrays/bulkrays.h
+
+bin_PROGRAMS = hcpp2cpp bulkrays_static bulkrays
 
 hcpp2cpp_SOURCES = hcpp2cpp.cpp
 
-bulkrays_SOURCES = testsite.cpp bootstrap.cpp simplefmap.cc bulkrays.cc
-bulkrays_LDADD = @QICONNLDLIB@
+bulkrays_static_SOURCES = testsite.cpp bootstrap.cpp simplefmap.cc bulkrays.cc
+bulkrays_static_LDADD = @QICONNLDLIB@
+bulkrays_static_LDFLAGS = @QICONNLDFLAGS@
+
+bulkrays_SOURCES = testsite.cpp bootstrap.cpp simplefmap.cc
+bulkrays_LDADD = @QICONNLDLIB@ libbulkrays.a
 bulkrays_LDFLAGS = @QICONNLDFLAGS@
+
+lib_LTLIBRARIES = libbulkrays.la
+noinst_LIBRARIES = libbulkrays.a
+
+libbulkrays_la_SOURCES = bulkrays.cc
+libbulkrays_la_CPPFLAGS = $(AM_CPPFLAGS)
+libbulkrays_la_LDFLAGS = @QICONNLDFLAGS@
+
+libbulkrays_a_SOURCES = bulkrays.cc
+libbulkrays_a_CPPFLAGS = $(AM_CPPFLAGS)
+libbulkrays_a_LDFLAGS = @QICONNLDFLAGS@
 
 		   
 %.cc: %.hcpp hcpp2cpp

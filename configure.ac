@@ -92,16 +92,16 @@ have_qiconn=no
 SAVECXXFLAGS="$CXXFLAGS"
 CXXFLAGS="$SAVECXXFLAGS $INCPATH"
 AC_LANG(C++)
-AC_TRY_COMPILE([
-#include <qiconn/qiconn.h>
-],[
-    qiconn::ConnectionPool cp;
-    cp.add_signal_handler (13);
-],[
-have_qiconn=yes
-])
+## AC_TRY_COMPILE([
+## #include <qiconn/qiconn.h>
+## ],[
+##     qiconn::ConnectionPool cp;
+##     cp.add_signal_handler (13);
+## ],[
+## have_qiconn=yes
+## ])
 if test x$have_qiconn = xno; then
-    for P_INC in /usr /usr/local "${prefix}"
+    for P_INC in "${prefix}" /usr/local /usr
     do
 	if test x$have_qiconn = xno; then
 	    echo -n "  ($P_INC :"
