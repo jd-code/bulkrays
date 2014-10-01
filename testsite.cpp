@@ -79,5 +79,6 @@ namespace bulkrays {
 	    delete (mapper);
 	    return 0;
 	}
+	return -1;
     }
 }
