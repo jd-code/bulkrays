@@ -178,6 +178,17 @@ case "$target" in
 	;;
 esac
 
+dnl check for mac-osX gcc stl variant
+case "$target" in
+    *-apple-darwin*)
+	CXXFLAGS="$CXXFLAGS -stdlib=libstdc++"
+	AC_MSG_RESULT([stdlib variant : -stdlib=libstdc++])
+	;;
+    *)
+	:
+	;;
+esac
+
 
 dnl concatenation of include dirs
 CFLAGS="$CFLAGS $INCPATH -DBULKRAYSVERSION=\"\\\"$PACKAGE_VERSION\\\"\""
