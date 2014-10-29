@@ -15,6 +15,8 @@
 
 #include <sys/mman.h>	    // mmap
 
+#include <stddef.h>	    // offsetof
+
 #include <bulkrays/bulkrays.h>
 
 namespace simplefmap {
@@ -186,10 +188,10 @@ namespace simplefmap {
 	~FMap_TreatRequest () {}
 
 	virtual TReqResult output (ostream &cout, HTTPRequest &req) {
-	    bool isGET = false;
+	    // bool isGET = false;
 	    bool isHEAD = false;
 	    if (req.method == "GET") {
-		isGET = true;
+		// isGET = true;
 	    } else if (req.method == "HEAD") {
 		isHEAD = true;
 	    } else {
@@ -638,5 +640,6 @@ function sortByMTime() {
 	    delete (mapper);
 	    return 0;
 	}
+	return -1;
     }
 }
