@@ -83,11 +83,22 @@ namespace bulkrays {
     typedef FieldsMap MimeHeader;
 
     class FieldsMapR : public map<string, const string&> {
+static string nullstring;
 	public:
 	    const char * name;
 	    FieldsMapR (const char * name) : name(name) {}
 	    ~FieldsMapR () {}
 	    void import (FieldsMap const &m);
+	    const string& operator[](const string &idx) const {
+		const_iterator mi = find (idx);
+		return (mi != end()) ? mi->second : nullstring;
+	    }
+	    long getl (const string &idx);
+	    long getl (const string &idx, bool &exist);
+	    long getl (const string &idx, long defvalue);
+	    double getd (const string &idx);
+	    double getd (const string &idx, bool &exist);
+	    double getd (const string &idx, double defvalue);
     };
 
     class BodySubEntry {

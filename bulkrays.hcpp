@@ -3,6 +3,7 @@
 
 #include <fstream>
 #include <iomanip>
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -207,6 +208,7 @@ static const char* hex="0123456789ABCDEF";
 	}
     }
 
+    string FieldsMapR::nullstring;
 
     void FieldsMapR::import (FieldsMap const &m) {
 	FieldsMap::const_iterator mi;
@@ -214,6 +216,44 @@ static const char* hex="0123456789ABCDEF";
 	for (mi=m.begin() ; mi!=m.end() ; mi++)
 	    this->insert ( pair<string, const string&> (mi->first, mi->second) );
     }
+    double FieldsMapR::getd (const string &idx) {
+	const_iterator mi = find (idx);
+	return (mi != end()) ? atof(mi->second.c_str()) : NAN;
+    }
+    double FieldsMapR::getd (const string &idx, double defvalue) {
+	const_iterator mi = find (idx);
+	return (mi != end()) ? atof(mi->second.c_str()) : defvalue;
+    }
+    double FieldsMapR::getd (const string &idx, bool&exist) {
+	const_iterator mi = find (idx);
+	if (mi != end()) {
+	    exist = true;
+	    return atof(mi->second.c_str());
+	} else {
+	    exist = false;
+	    return NAN;
+	}
+    }
+
+    long FieldsMapR::getl (const string &idx) {
+	const_iterator mi = find (idx);
+	return (mi != end()) ? atol(mi->second.c_str()) : 0;
+    }
+    long FieldsMapR::getl (const string &idx, long defvalue) {
+	const_iterator mi = find (idx);
+	return (mi != end()) ? atol(mi->second.c_str()) : defvalue;
+    }
+    long FieldsMapR::getl (const string &idx, bool&exist) {
+	const_iterator mi = find (idx);
+	if (mi != end()) {
+	    exist = true;
+	    return atol(mi->second.c_str());
+	} else {
+	    exist = false;
+	    return 0;
+	}
+    }
+
 
     ostream & operator<< (ostream& cout, FieldsMapR const &m ) {
 	FieldsMapR::const_iterator mi;
