@@ -62,7 +62,6 @@ CFLAGS="$CFLAGS -O2 -Wall -Wcast-qual -Wwrite-strings -Wstrict-prototypes -Wmiss
 dnl CXXFLAGS="$CXXFLAGS -O2 -Wall -Woverloaded-virtual -Wcast-qual -Wwrite-strings -Wstrict-prototypes -Wmissing-prototypes -Wredundant-decls -Winline"
 CXXFLAGS="$CXXFLAGS -O2 -Wall -Woverloaded-virtual -Wcast-qual -Wwrite-strings -Wredundant-decls"
 
-
 dnl offer a bypass for qiconn lib
 AC_ARG_ENABLE(libqiconn-path,
 [  --enable-libqiconn-path define the path for libqiconn and includes],
@@ -162,7 +161,7 @@ dnl end of check for qiconn lib ------------------------------------------------
 dnl badly look for bulkrays includes ...
 AC_MSG_CHECKING(for bulkrays headers)
 if test -f include/bulkrays/bulkrays.h ; then
-    INCPATH="$INCPATH -Iinclude"
+    INCPATH="-Iinclude $INCPATH"
     AC_MSG_RESULT(found)
 else
     AC_MSG_ERROR(Unable to find bulkrays hearders)
