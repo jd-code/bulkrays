@@ -29,6 +29,8 @@ namespace bulkrays {
     BULKRAYS_H_SCOPE bool debugearlylog;
 #endif
 
+    int md5 (const string &s, string &result);
+
     class Property {
 	private:
 	    bool b;
@@ -476,6 +478,83 @@ int HttppConn::idnum = 0;
 	    virtual void poll (void) {}
 	    virtual const char * gettype (void) { return "HttppBinder"; }
     };
+
+
+
+
+
+    // -------------------------------------------------------------------------------------
+
+
+    #define RANDFRMRANDERR 0xffffffffffffffff
+
+    int64_t random64fromrandom (void);
+    
+
+    int64_t hex2i64 (const string &s, size_t p=0);
+
+    class ParsedMimeEntry {
+	public:
+	    string mainname;
+	    const string &sorig;
+	    map <string, pair<int,int> > m;
+	    ParsedMimeEntry (string const & s);
+
+	    inline const string operator[] (string k) const {
+		map <string, pair<int,int> >::const_iterator mi = m.find(k);
+		if (mi == m.end())
+		    return sorig.substr(0,0);
+		else
+		    return sorig.substr (mi->second.first, mi->second.second);
+	    }
+
+	    void dump (ostream & cout);
+    };
+
+    class DigestAuthTag {   // JDJDJDJD missing :  periodic cleanup of map for old nonces
+	private:
+static int64_t nonceseed;
+static map<string, DigestAuthTag*> mdigest;
+	    string nonce;
+	    time_t expiration;
+	public:
+	    DigestAuthTag (string const &nonce, time_t allowance = 15*60);
+	    ~DigestAuthTag ();
+	    static void gennonce (string &s);
+	    static DigestAuthTag* finddtag (string &nonce);
+	    void addallowance (time_t allowance = 15*60);
+    };
+
+
+#ifdef BULKRAYS_H_GLOBINST
+    BULKRAYS_H_SCOPE int64_t DigestAuthTag::nonceseed = random64fromrandom ();
+    BULKRAYS_H_SCOPE map<string, DigestAuthTag*> DigestAuthTag::mdigest;
+#endif
+
+    class DigestAuth : virtual public TreatRequest {
+	private:
+	    map <string, string> users;
+	    string realm;
+	    string domain;
+	    time_t expiration;
+	public:
+	    DigestAuth (string realm, string domain, time_t expiration = 15*60);
+	    virtual ~DigestAuth ();
+
+	    virtual TReqResult output (ostream &cout, HTTPRequest &req);
+
+	    bool adduser (string user, string password);
+	    bool updateuser (string user, string password);
+	    bool deluser (string user);
+
+	    TReqResult check (ostream &cout, HTTPRequest &req);
+    };
+
+
+
+
+
+    // -------------------------------------------------------------------------------------
 
     union FaitLaForce;
 

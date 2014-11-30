@@ -175,8 +175,12 @@ namespace simplefmap {
     class FMap_TreatRequest : virtual public TreatRequest {
 	string rootdir;
 	size_t rootdirlength;
+	DigestAuth digestauth;
       public:
-	FMap_TreatRequest (string proposedrootdir) : TreatRequest(), rootdir(proposedrootdir) {
+	FMap_TreatRequest (string proposedrootdir) : TreatRequest(), rootdir(proposedrootdir), digestauth("private zone", "/") {
+
+		digestauth.adduser ("test", "subtil");
+
 		if (rootdir.empty()) {
 		    rootdir = "/";
 		} else if (rootdir[rootdir.size()-1] != '/') {
@@ -187,9 +191,13 @@ namespace simplefmap {
 
 	~FMap_TreatRequest () {}
 
+
 	virtual TReqResult output (ostream &cout, HTTPRequest &req) {
 	    // bool isGET = false;
 	    bool isHEAD = false;
+
+	    if (digestauth.check (cout, req) == TRCompleted) return TRCompleted;
+
 	    if (req.method == "GET") {
 		// isGET = true;
 	    } else if (req.method == "HEAD") {
@@ -632,6 +640,7 @@ function sortByMTime() {
 	    }
 	    hostmapper["hashttpp.zz"] = mapper;
 	    hostmapper["127.0.0.1:10080"] = mapper;
+	    set_default_host ("127.0.0.1:10080");
 	    return 0;
 
 	  case ShutDown:

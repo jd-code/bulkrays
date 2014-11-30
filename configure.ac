@@ -62,6 +62,15 @@ CFLAGS="$CFLAGS -O2 -Wall -Wcast-qual -Wwrite-strings -Wstrict-prototypes -Wmiss
 dnl CXXFLAGS="$CXXFLAGS -O2 -Wall -Woverloaded-virtual -Wcast-qual -Wwrite-strings -Wstrict-prototypes -Wmissing-prototypes -Wredundant-decls -Winline"
 CXXFLAGS="$CXXFLAGS -O2 -Wall -Woverloaded-virtual -Wcast-qual -Wwrite-strings -Wredundant-decls"
 
+dnl badly look for bulkrays includes ...
+AC_MSG_CHECKING(for bulkrays headers)
+if test -f include/bulkrays/bulkrays.h ; then
+    LOCALINCPATH="-Iinclude"
+    AC_MSG_RESULT(found)
+else
+    AC_MSG_ERROR(Unable to find bulkrays hearders)
+fi
+
 dnl offer a bypass for qiconn lib
 AC_ARG_ENABLE(libqiconn-path,
 [  --enable-libqiconn-path define the path for libqiconn and includes],
@@ -89,7 +98,7 @@ dnl check for qiconn include and lib
 AC_MSG_CHECKING(for qiconn lib)
 have_qiconn=no
 SAVECXXFLAGS="$CXXFLAGS"
-CXXFLAGS="$SAVECXXFLAGS $INCPATH"
+CXXFLAGS="$INCPATH $SAVECXXFLAGS"
 AC_LANG(C++)
 ## AC_TRY_COMPILE([
 ## #include <qiconn/qiconn.h>
@@ -104,7 +113,7 @@ if test x$have_qiconn = xno; then
     do
 	if test x$have_qiconn = xno; then
 	    echo -n "  ($P_INC :"
-	    CXXFLAGS="$SAVECXXFLAGS $INCPATH -I$P_INC/include"
+	    CXXFLAGS="$INCPATH -I$P_INC/include $SAVECXXFLAGS"
 	    AC_TRY_COMPILE([
 #include <qiconn/qiconn.h>
 void testqiconn (void) {
@@ -143,6 +152,71 @@ fi
 AC_SUBST(QICONNLDFLAGS)
 AC_SUBST(QICONNLDLIB)
 dnl end of check for qiconn lib --------------------------------------------------
+
+
+
+dnl check for mhash include and lib
+AC_MSG_CHECKING(for mhash lib)
+have_mhash=no
+SAVECXXFLAGS="$CXXFLAGS"
+CXXFLAGS="$INCPATH $SAVECXXFLAGS"
+AC_LANG(C++)
+## AC_TRY_COMPILE([
+## #include <mhash.h>
+## void testmhash (void) {
+## 
+##     keygenid algorithm = KEYGEN_S2K_SALTED;
+##     mhash_keygen_uses_salt(algorithm);
+## }
+## ],[
+## ],[
+## have_mhash=yes
+## ])
+if test x$have_mhash = xno; then
+    for P_INC in "${prefix}" /opt/local /usr/local /usr
+    do
+	if test x$have_mhash = xno; then
+	    echo -n "  ($P_INC :"
+	    CXXFLAGS="$INCPATH -I$P_INC/include $SAVECXXFLAGS"
+	    AC_TRY_COMPILE([
+#include <mhash.h>
+void testmhash (void) {
+
+    keygenid algorithm = KEYGEN_S2K_SALTED;
+    mhash_keygen_uses_salt(algorithm);
+}
+	    ],[
+	    ],[
+	    have_mhash=yes
+	    ])
+	    if test x$have_mhash = xyes; then
+		LIBMHASH_CFLAGS="-I$P_INC/include"
+		LIBMHASH_LDFLAGS="-L$P_INC/lib -lmhash"
+		echo -n " yes.)"
+	    else
+		echo -n " no.)"
+	    fi
+	fi
+    done
+    echo -n " : "
+fi
+CXXFLAGS="$SAVECXXFLAGS"
+AC_MSG_RESULT($have_mhash)
+if test x$have_mhash = xyes; then
+    :
+else
+    AC_MSG_ERROR(Unable to find mhash headers)
+fi
+AC_SUBST(LOCALINCPATH)
+AC_SUBST(LIBMHASH_CFLAGS)
+AC_SUBST(LIBMHASH_LDFLAGS)
+dnl end of check for mhash lib --------------------------------------------------
+
+
+
+
+
+
 
 
 
@@ -190,8 +264,8 @@ esac
 
 
 dnl concatenation of include dirs
-CFLAGS="$CFLAGS $INCPATH -DBULKRAYSVERSION=\"\\\"$PACKAGE_VERSION\\\"\""
-CXXFLAGS="$CXXFLAGS $INCPATH -DBULKRAYSVERSION=\"\\\"$PACKAGE_VERSION\\\"\""
+CFLAGS="$INCPATH $CFLAGS -DBULKRAYSVERSION=\"\\\"$PACKAGE_VERSION\\\"\""
+CXXFLAGS="$INCPATH $CXXFLAGS -DBULKRAYSVERSION=\"\\\"$PACKAGE_VERSION\\\"\""
 
 dnl Finally create all the generated files
 AC_OUTPUT([
