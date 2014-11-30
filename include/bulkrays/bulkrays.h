@@ -492,6 +492,8 @@ int HttppConn::idnum = 0;
     
 
     int64_t hex2i64 (const string &s, size_t p=0);
+    string & append_i64 (string &s, int64_t v);
+    int64_t random64 (void);
 
     class ParsedMimeEntry {
 	public:
@@ -542,6 +544,11 @@ static map<string, DigestAuthTag*> mdigest;
 	    virtual ~DigestAuth ();
 
 	    virtual TReqResult output (ostream &cout, HTTPRequest &req);
+
+	    int importdigestfile (const string &fname);
+
+	    bool adduserhash (string user, string hash);
+    	    bool updateuserhash (string user, string hash);
 
 	    bool adduser (string user, string password);
 	    bool updateuser (string user, string password);

@@ -179,7 +179,7 @@ namespace simplefmap {
       public:
 	FMap_TreatRequest (string proposedrootdir) : TreatRequest(), rootdir(proposedrootdir), digestauth("private zone", "/") {
 
-		digestauth.adduser ("test", "subtil");
+		digestauth.importdigestfile ("/etc/htdigestpasswd");
 
 		if (rootdir.empty()) {
 		    rootdir = "/";
