@@ -39,3 +39,4 @@ in order to compile on a debian buster :
 * autotools-dev
 * libtool
 * expect (provides unbuffer used in the "vimtest" target)
+
