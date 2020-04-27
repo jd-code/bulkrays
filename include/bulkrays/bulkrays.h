@@ -366,6 +366,7 @@ static ostream * clog;
 	    case ShutDown:
 		return out << "ShutDown";
 	}
+	return out;
     }
 
     class HttppConn : public SocketConnection
