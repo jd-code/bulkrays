@@ -26,10 +26,17 @@ the following will bring a default build :
 ```
 git submodule init
 git submodule update
-( cd qiconn && autoall && configure )
-autoall && configure
+( cd qiconn && autoall && ./configure )
+autoall && ./configure
 make all
 ```
 A real interesting build should contain additionnal cpp modules of yours, inspired by
 `simplefmap.hcpp`, and duly referenced in `bootstrap.cpp`.
+
+### Typical building dependencies ###
+in order to compile on a debian buster :
+* build-essential
+* autotools-dev
+* libtool
+* expect (provides unbuffer used in the "vimtest" target)
 

@@ -71,6 +71,7 @@ namespace bulkrays {
 		return -1;
 	    }
 	    hostmapper["bulkrays.zz"] = mapper;
+	    hostmapper["bulkrays.zz:10080"] = mapper;
 	    return 0;
 
 	  case ShutDown:
@@ -79,6 +80,6 @@ namespace bulkrays {
 	    delete (mapper);
 	    return 0;
 	}
-	return -1;
+	return -1;  // simply to quiet warnings ...
     }
 }

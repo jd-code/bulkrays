@@ -913,7 +913,7 @@ static const char* monthname[] = {
 	return returnerror.output (cout, req);
     }
 
-    HttppConn::HttppConn (int fd, struct sockaddr_in const &client_addr) : SocketConnection(fd, client_addr),request(*this) {
+    HttppConn::HttppConn (int fd, struct sockaddr_storage const &client_addr) : SocketConnection(fd, client_addr),request(*this) {
 	corking = true;
 	cork ();
 	id = idnum;
@@ -2272,6 +2272,9 @@ BulkRaysCPool::BulkRaysCPool (int nb, char ** cmde) : ConnectionPool (),
 		    addresses.push_back(AddressPort("0.0.0.0", atoi (scheme.substr(p+1).c_str())));
 	    }
 	    // cerr << "will try to bind : " << address << ":" << port << endl;
+	} else if (strncmp (cmde[i], "--bind6=", 8) == 0) {
+	    string scheme(cmde[i]+8);
+	    addresses.push_back(AddressPort(scheme,80));
 	} else if (strncmp (cmde[i], "--debugschedest", 15) == 0) {
 	    debug_multiple_scheddestr = true;
 	} else if (strncmp (cmde[i], "--debugconstructor", 18) == 0) {
@@ -2331,7 +2334,13 @@ BulkRaysCPool::BulkRaysCPool (int nb, char ** cmde) : ConnectionPool (),
 
     cerr << "binding [" << address << "]:[" << port << "]" << endl;
 
-	    int s = server_pool (port, address.c_str());
+	    int type;
+	    if (address.find(':') != string::npos)
+		type = AF_INET6;
+	    else
+		type = AF_INET;
+
+	    int s = server_pool (port, address.c_str(), type);
 	    if (s < 0) {
 		cerr << "could not instanciate listening socket, bailing out !" << endl;
 		for (list<int>::iterator li=listsockets.begin() ; li!=listsockets.end() ; li++)

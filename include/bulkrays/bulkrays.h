@@ -399,6 +399,7 @@ static ostream * clog;
 	    case ShutDown:
 		return out << "ShutDown";
 	}
+	return out;
     }
 
     class HttppConn : public SocketConnection
@@ -438,7 +439,7 @@ static int idnum;
 	    ostream& errlog (void);
 
 	    virtual ~HttppConn (void);
-	    HttppConn (int fd, struct sockaddr_in const &client_addr);
+	    HttppConn (int fd, struct sockaddr_storage const &client_addr);
 	    virtual void lineread (void);
 	    virtual void poll (void) {};
 	    virtual void eow_hook (void);
@@ -452,7 +453,7 @@ static int idnum;
 bool HttppConn::debugconstructor = false;
 int HttppConn::idnum = 0;
     BULKRAYS_H_SCOPE ofstream cnull("/dev/null");
-    BULKRAYS_H_SCOPE HttppConn httpconnnull (-1, sockaddr_in());
+    BULKRAYS_H_SCOPE HttppConn httpconnnull (-1, sockaddr_storage());
     BULKRAYS_H_SCOPE HTTPRequest reqnull(httpconnnull);
 #else
     BULKRAYS_H_SCOPE ofstream cnull;
@@ -472,7 +473,7 @@ int HttppConn::idnum = 0;
 		newname << ":" << port;
 		setname (newname.str());
 	    }
-	    virtual SocketConnection* connection_binder (int fd, struct sockaddr_in const &client_addr) {
+	    virtual SocketConnection* connection_binder (int fd, struct sockaddr_storage const &client_addr) {
 		return new HttppConn (fd, client_addr);
 	    }
 	    virtual void poll (void) {}

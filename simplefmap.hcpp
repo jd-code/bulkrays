@@ -339,41 +339,16 @@ req.errlog() << "simplefmap::output opendir(" << canonfname << " ) gave error " 
 		    }
 		}
 
-		size_t dirent_len = offsetof(struct dirent, d_name) + pathconf(canonfname, _PC_NAME_MAX) + 1;
-		struct dirent *entryp = (struct dirent *) malloc(dirent_len);
-		if (entryp == NULL) {
-		    req.errlog() << "simplefmap::output could not alloc struct dirent * (size = " << (int)dirent_len << ")" << endl;
-		    req.set_relative_expires (60);
-		    free (canonfname);
-		    closedir (fdir);
-		    return error (cout, req, 503, NULL, "weidries occured (002)");
-		}
-
 	list <direntry> thedir;
 	int id = 0;
 		while (true) {
 		    struct dirent *presult;
-		    if (readdir_r(fdir, entryp, &presult) != 0)
-			break;
-
-		    if (presult == NULL)
+		    if ((presult = readdir(fdir)) == NULL)
 			break;
 
 		    id ++;
 		    thedir.push_back (direntry(canonfname, *presult, id));
-
-//		    struct dirent &entry = *presult;
-//
-//		    if (entry.d_type == DT_DIR) {
-//			string name(entry.d_name);
-//			name += '/';
-//			thedir [name] = "";
-//		    } else
-//			thedir [entry.d_name] = "";
-
 		}
-
-		free (entryp);
 
 		req.statuscode = 200;
 		req.outmime["Content-Type"] = "text/html;charset=UTF-8";
@@ -638,9 +613,11 @@ function sortByMTime() {
 		cerr << "bulkrays::testsite_global could not allocate fmap_urimapper" << endl;
 		return -1;
 	    }
-	    hostmapper["hashttpp.zz"] = mapper;
-	    hostmapper["127.0.0.1:10080"] = mapper;
-	    set_default_host ("127.0.0.1:10080");
+//	    hostmapper["hashttpp.zz"] = mapper;
+//	    hostmapper["127.0.0.1:10080"] = mapper;
+	    hostmapper["bulkrays2.nkdn.fr"] = mapper;
+	    hostmapper["bulkrays2.nkdn.fr:10080"] = mapper;
+	    unset_default_host ();
 	    return 0;
 
 	  case ShutDown:
