@@ -109,7 +109,12 @@ AC_LANG(C++)
 ## have_qiconn=yes
 ## ])
 if test x$have_qiconn = xno; then
-    for P_INC in "${prefix}" /usr/local /usr
+    if test "${prefix}" = "NONE"  ; then
+	TESTPREFIX="/usr/local"
+    else
+	TESTPREFIX="${prefix}"
+    fi
+    for P_INC in "${TESTPREFIX}" /usr/local /usr
     do
 	if test x$have_qiconn = xno; then
 	    echo -n "  ($P_INC :"
@@ -173,7 +178,12 @@ AC_LANG(C++)
 ## have_mhash=yes
 ## ])
 if test x$have_mhash = xno; then
-    for P_INC in "${prefix}" /opt/local /usr/local /usr
+    if test "${prefix}" = "NONE"  ; then
+	TESTPREFIX="/usr/local"
+    else
+	TESTPREFIX="${prefix}"
+    fi
+    for P_INC in "${TESTPREFIX}" /opt/local /usr/local /usr
     do
 	if test x$have_mhash = xno; then
 	    echo -n "  ($P_INC :"

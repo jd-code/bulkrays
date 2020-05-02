@@ -8,9 +8,6 @@ A minimalist example is provided through the [simplefmap.hcpp](https://github.co
 Modules are simple to build, particularly by inlining HTML right into your CPP code.
 A [vim syntax extension](https://github.com/jd-code/bulkrays/blob/master/hcpp.vim) is provided in order to hilight correctly those inclusions.
 
-# Dependencies #
-* [qiconn](https://github.com/jd-code/qiconn) is imported as a git submodule
-
 # Usage #
 there's yet no typical service script for maintaining the daemon operations.
 such a command line will launch the server binding on two addresses, *dropping root
@@ -21,17 +18,8 @@ for example :
     >> /var/log/bulkrays/error.log & 
 ```
 
-### Building ###
-the following will bring a default build :
-```
-git submodule init
-git submodule update
-( cd qiconn && autoall && ./configure )
-autoall && ./configure
-make all
-```
-A real interesting build should contain additionnal cpp modules of yours, inspired by
-`simplefmap.hcpp`, and duly referenced in `bootstrap.cpp`.
+# Dependencies #
+* [qiconn/libqiconn](https://github.com/jd-code/qiconn) a pool of "socket-enriched" derivative of iostreams.
 
 ### Typical building dependencies ###
 in order to compile on a debian buster :
@@ -39,4 +27,15 @@ in order to compile on a debian buster :
 * autotools-dev
 * libtool
 * expect (provides unbuffer used in the "vimtest" target)
+* libmhash-dev	(computes md5 here and there ...)
 
+
+# Building #
+the following will bring a default build :
+```
+[ retrieve and install libqiconn ]
+autoall && ./configure
+make all
+```
+A real interesting build should contain additionnal cpp modules of yours, inspired by
+`simplefmap.hcpp`, and duly referenced in `bootstrap.cpp`.

@@ -7,11 +7,11 @@ vimtest: all
 	## exit 0
 	## ./hcpp2cpp testbb.hcpp -o testbb.cpp
 	./bulkrays --bind=0.0.0.0:10080 --user=$$USER		\
-	    --debugparsereq \
 	    --access_log=access_log --earlylog --console	\
 	    --p tagazou zonzon=2 p=3				\
 	    BulkRays::ownsetoftests				\
 	    2>&1 | unbuffer -p tr ':' '='
+##	    --debugparsereq \
 
 
 pkginclude_HEADERS = include/bulkrays/bulkrays.h

@@ -134,8 +134,10 @@ static const char *hex = "0123456789abcdef";
 	map<string, DigestAuthTag*>::iterator mi = mdigest.find (nonce);
 	if (mi == mdigest.end())
 	    return NULL;
-	if (mi->second->expiration > time(NULL)) {
-cerr << "erasing nonce = " << nonce << endl;
+	if (mi->second->expiration < time(NULL)) {
+cerr << "erasing nonce = " << nonce << endl
+     << "        expiration = " << mi->second->expiration << endl
+     << "              time = " << time(NULL) << endl;;
 	    delete (mi->second);			    // JDJDJD there's a serious potential race here, we should have a lock
 	    return NULL;
 	}
@@ -174,7 +176,7 @@ cerr << "erasing nonce = " << nonce << endl;
 	}
 	int nline = 1;
 	int nbuseradded = 0;
-	while (input) {
+	while ((bool)input) {
 	    string line;
 	    char c;
 	    while (input && (c = input.get()) && (!input.eof()) && (c!=10) && (c!=13)) line += c;
@@ -254,41 +256,53 @@ cerr << "erasing nonce = " << nonce << endl;
 
 	if (req.mime.verif("Authorization", mi)) {
 	    ParsedMimeEntry au(mi->second);
-au.dump (cerr);
+// au.dump (cerr);
 	    string nonce (au["nonce"]);
 	    DigestAuthTag* dtag = DigestAuthTag::finddtag (nonce);
 	    if (dtag == NULL) {	// not a validated nonce
-		int64_t propt = hex2i64 (nonce);
-cerr << "nonce=" << nonce << endl
-     << "    t=" << setbase(16) << setfill('0') << setw(16) << propt << setbase(10) << endl;
-		if ( time(NULL) - propt > expiration ) // the unvalidated nonce is too old		    JDJDJDJD be consistent here with further allowance 
+		if (nonce.size() < 32) {
+// cerr << "nonce=" << nonce << endl;
+// cerr << "nonce is too short for time validation" << endl;
 		    needauthentication = true;
-		else
-		    goodenoughforvalid = true;
-	    } else
+		} else {
+		    int64_t propt = hex2i64 (nonce, 16);
+// cerr << "nonce=" << nonce << endl
+//      << "    t=" << setbase(16) << setfill('0') << setw(16) << propt << setbase(10) << endl;
+		    if ( time(NULL) - propt > expiration ) { // the unvalidated nonce is too old		    JDJDJDJD be consistent here with further allowance 
+// cerr << "le nonce a expire si on peut dire ca... diff=" << time(NULL) - propt << " > " << expiration << endl;
+			needauthentication = true;
+		    } else {
+			goodenoughforvalid = true;
+		    }
+		}
+	    } else { // the nonce was a valid one ... JDJDJDJD maybe we should still check for time validation and make them expire !!
 		goodenoughforvalid = true;
+	    }
 
 	    if (goodenoughforvalid) {
 
 		// lets look for the proper user
 		map<string,string>::const_iterator mi_user = users.find (au["username"]);
 		if (mi_user != users.end()) {	// the user is in the db
-//		    string  ha1s (mi_user->first);
-//			    ha1s += ':';
-//			    // ha1s += au["realm"];
-//			    ha1s += realm;
-//			    ha1s += ":";
-//			    ha1s += mi_user->second;	// pass
-		    string  ha2s (req.method);
-			    ha2s += ":";
+		    string  a1 (mi_user->first);
+			    a1 += ':';
+			    // ha1s += au["realm"];
+			    a1 += realm;
+			    a1 += ":";
+			    a1 += mi_user->second;	// pass
+		    string  a2 (req.method);
+			    a2 += ":";
 			    // ha2s += req.req_uri;
-			    ha2s += au["uri"];		// we use the provided uri because some bad client give complete url instead of uri (android web-client !)
-		    string ha2;
-//		    md5 (ha1s, ha1);
-		    md5 (ha2s, ha2);
+			    a2 += au["uri"];		// we use the provided uri because some bad client give complete url instead of uri (android web-client !)
+		    string ha1, ha2;
+		    md5 (a1, ha1);
+		    md5 (a2, ha2);
 		    string digest;
-		    md5 (mi_user->second+':'+au["nonce"]+':'+au["nc"]+':'+au["cnonce"]+':'+au["qop"]+':'+ha2, digest);
-cerr << "digest calculated : " << digest << endl;
+		    md5 (ha1+':'+au["nonce"]+':'+au["nc"]+':'+au["cnonce"]+':'+au["qop"]+':'+ha2, digest);
+// cerr << "source digest calculated : [" << 
+//		        (ha1+':'+au["nonce"]+':'+au["nc"]+':'+au["cnonce"]+':'+au["qop"]+':'+ha2)
+//		     << "]" << endl;
+// cerr << "digest calculated : " << digest << endl;
 
 		    if (au["response"] == digest) {
 			needauthentication = false;
@@ -299,9 +313,9 @@ cerr << "digest calculated : " << digest << endl;
 				return error (cout, req, 500, "could not create a DigestAuthTag");
 			    }
 			} else {
-			    ha2 = "::";
-			    ha2s += req.req_uri;
-			    md5 (ha2s, ha2);
+			    a2 = "::";
+			    a2 += req.req_uri;
+			    md5 (a2, ha2);
 			    md5 (mi_user->second+':'+au["nonce"]+':'+au["nc"]+':'+au["cnonce"]+':'+au["qop"]+':'+ha2, digest);
 			    string &authinfo = req.outmime["Authentication-Info"];
 			    authinfo = "rspauth=\"";

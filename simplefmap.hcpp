@@ -220,7 +220,7 @@ namespace simplefmap {
 	    percentdecode (req.document_uri, uridecode);
 // req.errlog() << "req.document_uri = " << uridecode << endl;
 	    fname += uridecode;
-	    char * canonfname = realpath (fname.c_str(), NULL);
+	    char * canonfname = realpath (fname.c_str(), NULL);	// follow and expands all symlink encountered
 	    if (canonfname == NULL) {
 		int e = errno;
 		switch (e) {

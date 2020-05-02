@@ -25,7 +25,7 @@ namespace bulkrays {
 	    return -1;
 	}
 static const char *hex = "0123456789abcdef";
-        for (int i = 0; i < mhash_get_block_size(MHASH_MD5); i++) {
+        for (size_t i = 0; i < mhash_get_block_size(MHASH_MD5); i++) {
 	    result += hex[(hash[i] & 0xf0)>>4];
 	    result += hex[(hash[i] & 0x0f)];
 	}

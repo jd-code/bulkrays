@@ -1,5 +1,6 @@
 
 bulkrays:
+	    BUILD: integrer/documneter un mode "full static-lib" incluant qiconn/libqiconn
 	    trouver une meilleure definition de BULKNPOS
     [test]  loguer les connections coupees, transmission partielles en 999000+HTTP_code
 	    fournir une methode/variante qui ne retoune que le header des erreurs  (en reponse a HEAD)
@@ -39,7 +40,8 @@ bulkrays:
 
 SillyConsole
 	    prompt with listening addresses (reverted ?) ports, session name from properties
-    [done] connectionpool dump  (commande dumpcp en console)
+    [done]  connectionpool dump  (commande dumpcp en console)
+            dump auth-digest, add, revoke, modify some of them
 
 HTTPClient
     [done]  POST
