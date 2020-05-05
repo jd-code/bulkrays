@@ -1,3 +1,28 @@
+/*
+ * Bulkrays Copyright (C) 2012-2020 Jean-Daniel Pauget
+ * A whole set of building utilities
+ *
+ * jdbulkrayed@disjunkt.com  -  http://bulkrays.disjunkt.com/
+ *
+ * This file is part of Bulkrays.
+ *
+ * Loopsoids is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * Loopsoids is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Loopsoids; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *
+ * you can also try the web at http://www.gnu.org/
+ */
+
 #include "config.h"
 
 #include <sys/types.h>	    // stat opendir
@@ -175,11 +200,64 @@ namespace simplefmap {
     class FMap_TreatRequest : virtual public TreatRequest {
 	string rootdir;
 	size_t rootdirlength;
-	DigestAuth digestauth;
-      public:
-	FMap_TreatRequest (string proposedrootdir) : TreatRequest(), rootdir(proposedrootdir), digestauth("private zone", "/") {
+	map <string, DigestAuth*> mprotect;
 
-		digestauth.importdigestfile ("/etc/htdigestpasswd");
+	TReqResult check_restr_and_auth (ostream &cout, HTTPRequest &req, const string & canonfname, bool isdir) {
+	    string testdir(canonfname);
+
+	    if (isdir) {
+		if (testdir[testdir.size()-1] != '/')
+		    testdir += '/';
+	    } else {
+		size_t pslash = testdir.rfind('/');
+		if (string::npos == pslash) {	// this is odd a canonical fname without a slash ??? ==> denied
+		    return error (cout, req, 403, NULL, "file permission denied (004)");
+		}
+		testdir = testdir.substr(0,pslash+1);
+	    }
+
+cerr << "checking restrictions in regard with testdir = [" << testdir << "] obtained from [" << canonfname << "]" << endl;
+	    if (mprotect.empty()) return TRPending; // nothing to check
+
+	    map <string, DigestAuth*>::iterator mpi = mprotect.lower_bound (testdir);
+	    if (mpi != mprotect.end()) {
+		size_t prot_size = mpi->first.size();
+		if (prot_size <= testdir.size()) {  // the protected dir can fit inside the path, we must test further ...
+		    if (testdir.compare(0, prot_size, mpi->first) == 0) {
+			// we apply the corresponding protection :
+			if (mpi->second == NULL) {
+			    // no related digest => always denied
+			    return error (cout, req, 403, NULL, "file permission denied (003)");
+			} else {
+			    // we challenge to have a password
+			    if (mpi->second->check (cout, req) == TRCompleted) {
+				// we did not get a valid answer
+				return TRCompleted;
+			    }
+			    // we had a valid answer we continue
+			}
+		    }
+		}
+	    }
+	    return TRPending;
+	}
+
+      public:
+
+// digestauth("private zone", "/")
+// digestauth.importdigestfile ("/etc/htdigestpasswd");
+
+	void add_digestauth (const string &dirname, DigestAuth* pdigestauth) {
+	    string dir = dirname;
+	    if (dir.empty()) {
+		dir = "/";
+	    } else if (dir[dir.size()-1] != '/') {
+		dir += '/';
+	    }
+	    mprotect [dir] = pdigestauth;
+	}
+
+	FMap_TreatRequest (string proposedrootdir) : TreatRequest(), rootdir(proposedrootdir) {
 
 		if (rootdir.empty()) {
 		    rootdir = "/";
@@ -196,7 +274,7 @@ namespace simplefmap {
 	    // bool isGET = false;
 	    bool isHEAD = false;
 
-	    if (digestauth.check (cout, req) == TRCompleted) return TRCompleted;
+// if (digestauth.check (cout, req) == TRCompleted) return TRCompleted;
 
 	    if (req.method == "GET") {
 		// isGET = true;
@@ -293,6 +371,9 @@ req.errlog() << "simplefmap::output lstat(" << canonfname << ") gave error " << 
 	    }
 
 	    if ((S_IFDIR & statbuf.st_mode) != 0) { // we found a directory
+
+		if (TRCompleted == check_restr_and_auth (cout,req, canonfname, true))
+		    return TRCompleted;	    // some restriction or auth didn't match ....
 
 		if (isHEAD) {	// we don't give interesting results on such things yet ...
 //  HTTP/1.0 200 OK
@@ -461,6 +542,10 @@ function sortByMTime() {
 		cout << s.str();
 		closedir (fdir);
 	    } else { // we found a file
+
+		if (TRCompleted == check_restr_and_auth (cout,req, canonfname, false))
+		    return TRCompleted;	    // some restriction or auth didn't match ....
+
 		string mime_type;
 		size_t pdot = req.document_uri.rfind('.');
 		if (pdot == string::npos) {
@@ -597,22 +682,37 @@ function sortByMTime() {
 	    virtual TreatRequest* treatrequest (HTTPRequest &req) {
 		return &fmap_treatrequest;
 	    }
+	    
+	    void add_digestauth (const string &dirname, DigestAuth* pdigestauth) {
+		fmap_treatrequest.add_digestauth (dirname, pdigestauth);
+	    }
     };
 
     fmap_urimapper *mapper = NULL;
+    DigestAuth *pdigest = NULL;
     int simplefmap_global (BSOperation op) {
+#if OSXFILESCHEME == 1
+	string rootdir ("/Users/bulkrayed");
+#else
+	string rootdir("/home/bulkrayed");
+#endif
 	switch (op) {
 	  case StartUp:
-#if OSXFILESCHEME == 1
-	    mapper = new fmap_urimapper("/Users/bulkrayed");
-#else
-	    mapper = new fmap_urimapper("/home/bulkrayed");
-#endif
+	    mapper = new fmap_urimapper(rootdir);
 //	    mapper = new fmap_urimapper("/BIG/home/webs/hashttpp.zz/html");
 	    if (mapper == NULL) {
 		cerr << "bulkrays::testsite_global could not allocate fmap_urimapper" << endl;
 		return -1;
 	    }
+	    pdigest = new DigestAuth("password protected", "/");
+	    if (pdigest == NULL) {
+		cerr << "bulkrays::testsite_global could not allocate pdigest" << endl;
+		delete (mapper);
+		return -1;
+	    }
+	    pdigest->importdigestfile ("/etc/htdigestpasswd");
+	    mapper->add_digestauth (rootdir+"/protected", pdigest);
+	    mapper->add_digestauth (rootdir+"/deeper/protected", pdigest);
 //	    hostmapper["hashttpp.zz"] = mapper;
 //	    hostmapper["127.0.0.1:10080"] = mapper;
 	    hostmapper["bulkrays2.nkdn.fr"] = mapper;

@@ -1,9 +1,8 @@
 dnl
-dnl BulkRays Copyright (C) 2013 Jean-Daniel Pauget
+dnl BulkRays Copyright (C) 2012-2020 Jean-Daniel Pauget
 dnl A whole set of http tcp sessions
 dnl
-dnl bulkrays@nekodune.com  -  http://bulkrays.nekodune.com/
-
+dnl jdbulkrayed@disjunkt.com  -  http://bulkrays.disjunkt.com/
 
 dnl This file is part of BulkRays
 dnl 

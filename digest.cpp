@@ -1,3 +1,32 @@
+/*
+ * Bulkrays Copyright (C) 2012-2020 Jean-Daniel Pauget
+ * A whole set of building utilities
+ *
+ * jdbulkrayed@disjunkt.com  -  http://bulkrays.disjunkt.com/
+ *
+ * This file is part of Bulkrays.
+ *
+ * Loopsoids is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * Loopsoids is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Loopsoids; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *
+ * you can also try the web at http://www.gnu.org/
+ */
+
+//! implementation of rfc2617/rfc7616(partial only) : HTTP Digest Access Authentication
+// JDJDJDJD missing :  periodic cleanup of map for old nonces
+
+
 #include "config.h"
 
 #include <fstream>
@@ -168,18 +197,26 @@ cerr << "erasing nonce = " << nonce << endl
     DigestAuth::~DigestAuth () {}
 
     int DigestAuth::importdigestfile (const string &fname) {
+
+// the digest-negociation needs the clear password somewhere ....
+// file-format :
+// <login>:<some realm>:<clearpassword>
+// johndoe:treasure part:obafgkm42
+// kent:secret files:verytrongpassword__
+
 	ifstream input (fname.c_str());
 	if (!input) {
 	    int e = errno;
 	    cerr << "DigestAuth::importdigestfile could not open file " << fname << " : " << strerror(e) << endl;
 	    return 0;
 	}
-	int nline = 1;
+	int nline = 0;
 	int nbuseradded = 0;
 	while ((bool)input) {
 	    string line;
 	    char c;
 	    while (input && (c = input.get()) && (!input.eof()) && (c!=10) && (c!=13)) line += c;
+	    nline ++;
 	    if (line.empty()) continue;
 	    size_t p, q;
 	    p = line.find (':');
@@ -198,7 +235,6 @@ cerr << "erasing nonce = " << nonce << endl
 	    string hash = line.substr (q+1);
 	    if (adduserhash (user, hash))
 		nbuseradded ++;
-	    nline ++;
 	}
 
 	return nbuseradded;
