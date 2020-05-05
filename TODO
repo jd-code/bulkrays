@@ -1,46 +1,46 @@
 
 bulkrays:
-	    BUILD: integrer/documneter un mode "full static-lib" incluant qiconn/libqiconn
-	    trouver une meilleure definition de BULKNPOS
-    [test]  loguer les connections coupees, transmission partielles en 999000+HTTP_code
-	    fournir une methode/variante qui ne retoune que le header des erreurs  (en reponse a HEAD)
-    [done]  en cas de mauvaise 1ere ligne http fermer intempestivement la connexion
+	    BUILD: integrate/documnet a "full static-lib" mode that would include qiconn/libqiconn
+	    find a better definition of definition  "BULKNPOS"
+    [test]  log shut abbruptly-shut connections, partial-transmissions with 999000+HTTP_code
+	    find a better variation for returning only headerd when errors oddurs (as responses to HEAD requests)	    
+    [done]  shut the connexion in case of empty or malformed first line
 
-	    trouver un moyen de gerer une conf ... au moins pour les params globaux ? :(
+	    find a way to hadle a configuration(file ?) .. at least for global params ?
     	    conf : default char encoding ?
     	    faire un generateur de paquetage configures et estampilles(stamp=IP ou stamp=service) ?
     	    utiliser zlib pour gzip et deflater
     	    troubles with w3m ??????
-	    gerer des timouts sur la reception de reqs http SO_RCVTIMEO and SO_SNDTIMEO ?
+	    handle timouts when receiving reqs http SO_RCVTIMEO and SO_SNDTIMEO ?
     [almost done] graceful quit without connection pending : done on sigint or sigquit, flush log missing
 	    graceful quit (w or wo connection pending) + flush (logs)
-    [done]  possibilité d'avoir un catch-all au niveau de Host: bon pour les embeded server
-	    passer tt le code en revue pour usage de xmlencode de ttes sorties en html/xml
-    [done]  fournir des htmlencode
+    [done]  ability of implementing a catch-all at Host: levek,  nice for embeded servers ...
+	    full code-review in order to use xmlencode of any html/xml output
+    [done]  offer htmlencode
 	    percent-decode fields names ????
-	    fournir htmldecode
-    [done]  logging setw ne marche pas sur tous les champs
-    [done]  manque une methode generique de construction des headers mimes et de la ligne de status
+	    offer htmldecode
+    [done]  logging setw does'nt work for all fields
+    [done]  missing generic method for headers building and status-line output
     [done]  BUG many errors are logged twice !
     [done]  size delivered aren't logged yet ...
     [done]  permit regular simple error emission without closing the connection !
-    [done ?] !!! verifier et loguer qu'une req http n'arrive pas avant la fin de transmission des donnees de la precedente
-	    req_body parsing : utiliser un mode plus strict d'erreurs report
+    [done ?] !!! check and log that an http req doesn't come before everything from the previous has been transmitted
+	    req_body parsing : use a stricter error-report
 	    %00 in percentdecode ??????
 
 	    honor the Connection: close   request header (yet we don't) ?
 
 
-	    versionnisation /vxxx/ obligatoire des elements de composition ?
-		parsing auto des .html pour remplacement des vxxx
-		empecher de livrer autre chose que du html sans ca ?
-		empecher la pollution de cache sur versionning futur ou fantaisiste (404) ?
-	    rendre obligatoire les champs de caching
+	    make the versionnisation "/vxxx/  of composition-elements ?
+		automatic parsing of .html for replacing "vxxx"
+		prevent delivery of html without "vxxx" versionning ?
+		prevent cache pollution with future (or dumb) version-no (answ: 404) ?
+	    make caching-mime-entries mandatory
 	    cookies ?
 
 SillyConsole
 	    prompt with listening addresses (reverted ?) ports, session name from properties
-    [done]  connectionpool dump  (commande dumpcp en console)
+    [done]  connectionpool dump  ("dumpcp" command in console)
             dump auth-digest, add, revoke, modify some of them
 
 HTTPClient
@@ -58,11 +58,12 @@ HTTPClientPool
 	    stats : nbquery, nbpoolmiss, nbconnects, nbtimeouts, nbhangups ... ?
 
 simplefmap:
-    [done]  lire les correspondances terminaisons de fichier -> mime
-	    valider que le fopen + mmap ne change pas la date du fichier et qu'il est impossible d'ecrire !!!
+	    always answer 401, even for missing files, inside a protextion cone ...
+    [done]  read the (file-extensions -> mime) matches
+	    validate that fopen + mmap doesn't change the file's dates, and that writing is impossible (via mmap) !!!
 
 testsite:
-	    mettre a jour avec generation des headers propre et suppression du -DBULKRAYSVERSION
+	    clean the code with proprer headers-generation and suppress the use of -DBULKRAYSVERSION
 
 
 hcpp2cpp:
@@ -70,3 +71,4 @@ hcpp2cpp:
 
 hcpp.vim:
 	    <style> .bomb64 { background: url(data:image/gif;base64,}} doesnt highlight back to cpp
+
