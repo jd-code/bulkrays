@@ -1,6 +1,6 @@
 /*
  * Bulkrays Copyright (C) 2012-2020 Jean-Daniel Pauget
- * A whole set of building utilities
+ * ... light http server C++ library ...
  *
  * jdbulkrayed@disjunkt.com  -  http://bulkrays.disjunkt.com/
  *
@@ -226,10 +226,12 @@ cerr << "checking restrictions in regard with testdir = [" << testdir << "] obta
 		    if (testdir.compare(0, prot_size, mpi->first) == 0) {
 			// we apply the corresponding protection :
 			if (mpi->second == NULL) {
+cerr << "   ... forbiden by NULL protect" << endl;
 			    // no related digest => always denied
 			    return error (cout, req, 403, NULL, "file permission denied (003)");
 			} else {
 			    // we challenge to have a password
+cerr << "   ... authentication needed real=[" << mpi->second->getrealm() << "]" << endl;
 			    if (mpi->second->check (cout, req) == TRCompleted) {
 				// we did not get a valid answer
 				return TRCompleted;

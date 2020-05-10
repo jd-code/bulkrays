@@ -58,12 +58,13 @@ HTTPClientPool
 	    stats : nbquery, nbpoolmiss, nbconnects, nbtimeouts, nbhangups ... ?
 
 simplefmap:
+	    move simplefmap in a subdir or separate stand-alone project left for an example ?
 	    always answer 401, even for missing files, inside a protextion cone ...
     [done]  read the (file-extensions -> mime) matches
 	    validate that fopen + mmap doesn't change the file's dates, and that writing is impossible (via mmap) !!!
 
 testsite:
-	    clean the code with proprer headers-generation and suppress the use of -DBULKRAYSVERSION
+    [done]  clean the code with proprer headers-generation and suppress the use of -DBULKRAYSVERSION
 
 
 hcpp2cpp:

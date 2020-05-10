@@ -1,6 +1,6 @@
 /*
  * Bulkrays Copyright (C) 2012-2020 Jean-Daniel Pauget
- * A whole set of building utilities
+ * ... light http server C++ library ...
  *
  * jdbulkrayed@disjunkt.com  -  http://bulkrays.disjunkt.com/
  *
@@ -39,6 +39,9 @@
 
 
 #include <qiconn/qiconn.h>
+
+// do not change here but in configure.ac AC_INIT !
+#define BULKRAYSVERSION "@PACKAGE_VERSION@"
 
 namespace bulkrays {
     using namespace std;
@@ -580,6 +583,8 @@ static map<string, DigestAuthTag*> mdigest;
 	    bool adduser (string user, string password);
 	    bool updateuser (string user, string password);
 	    bool deluser (string user);
+
+	    inline const string& getrealm (void) const { return realm;}
 
 	    TReqResult check (ostream &cout, HTTPRequest &req);
     };

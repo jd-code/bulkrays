@@ -1,6 +1,6 @@
 /*
  * Bulkrays Copyright (C) 2012-2020 Jean-Daniel Pauget
- * A whole set of building utilities
+ * ... light http server C++ library ...
  *
  * jdbulkrayed@disjunkt.com  -  http://bulkrays.disjunkt.com/
  *

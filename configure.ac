@@ -26,7 +26,7 @@ dnl
 dnl bulkrays@nekodune.com  -  http://bulkrays.nekodune.com/
 
 dnl Process this file with autoconf to produce a configure script.
-AC_INIT([bulkrays], [0.0.6], [bulkrays@nekodune.com])
+AC_INIT([bulkrays], [0.0.7], [bulkrays@nekodune.com])
 AC_CONFIG_SRCDIR([./bulkrays.hcpp])
 
 
@@ -63,8 +63,8 @@ CXXFLAGS="$CXXFLAGS -O2 -Wall -Woverloaded-virtual -Wcast-qual -Wwrite-strings -
 
 dnl badly look for bulkrays includes ...
 AC_MSG_CHECKING(for bulkrays headers)
-if test -f include/bulkrays/bulkrays.h ; then
-    LOCALINCPATH="-Iinclude"
+if test -f ./bulkrays/bulkrays.h.in ; then
+    LOCALINCPATH="-I."
     AC_MSG_RESULT(found)
 else
     AC_MSG_ERROR(Unable to find bulkrays hearders)
@@ -243,8 +243,8 @@ dnl end of check for mhash lib -------------------------------------------------
 
 dnl badly look for bulkrays includes ...
 AC_MSG_CHECKING(for bulkrays headers)
-if test -f include/bulkrays/bulkrays.h ; then
-    INCPATH="-Iinclude $INCPATH"
+if test -f ./bulkrays/bulkrays.h.in ; then
+    INCPATH="-I. $INCPATH"
     AC_MSG_RESULT(found)
 else
     AC_MSG_ERROR(Unable to find bulkrays hearders)
@@ -273,12 +273,13 @@ esac
 
 
 dnl concatenation of include dirs
-CFLAGS="$INCPATH $CFLAGS -DBULKRAYSVERSION=\"\\\"$PACKAGE_VERSION\\\"\""
-CXXFLAGS="$INCPATH $CXXFLAGS -DBULKRAYSVERSION=\"\\\"$PACKAGE_VERSION\\\"\""
+CFLAGS="$INCPATH $CFLAGS"
+CXXFLAGS="$INCPATH $CXXFLAGS"
 
 dnl Finally create all the generated files
 AC_OUTPUT([
 	Makefile
+	bulkrays/bulkrays.h
 ])
 
 
